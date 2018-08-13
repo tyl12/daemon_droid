@@ -20,6 +20,7 @@ static char   SERVER_IP[64] = { '\0' };
 static char SERVER_PORT[64] = { '\0' };
 static char SERVER_USER[64] = { '\0' };
 static char      R_PORT[64] = { '\0' };
+static char RSSH_MONITOR[64] = { '\0' };
 static char   DEVICE_ID[64] = { '\0' };
 static char       DEBUG[64] = { '\0' };
 
@@ -43,12 +44,13 @@ const char* const  INSTALL_APK = "pm install -r -t --user 0 "
 const char* const  UNINSTALL_APK = "pm uninstall -k com.xiaomeng.icelocker";
 
 const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autossh cmd path */
-                                   "-M 1234 "                           /* default monitor port is 1234 */
+                                   "-M %s "                             /* monitor port */
                                    "-NR %s"                             /* forward port */
                                    ":localhost:%s "                     /* default ssh port of local is 22 */
                                    "-i '/system/etc/ssh_host_rsa_key' " /* private key */
                                    "-o 'StrictHostKeyChecking=no' "     /* without host authentication */
-                                   "-o 'ServerAliveInterval=100' "      /* send heart beat every 100ms */
+                                   "-o 'ServerAliveInterval=60' "       /* send heart beat every 60s */
+                                   "-o 'ServerAliveCountMax=3' "        /* check alive max count */
                                    "%s"                                 /* user name of forward server */
                                    "@%s "                               /* ip of forward server */
                                    "-p %s";                             /* ssh port of forward server */
@@ -81,12 +83,13 @@ int main()
             continue;
 
         *equal = '\0';
-        if (  *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))   { trim(  SERVER_IP, equal + 1); continue; }
-        if (*SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT")) { trim(SERVER_PORT, equal + 1); continue; }
-        if (*SERVER_USER == '\0' && strstr(line, "RSSH_USER"))    { trim(SERVER_USER, equal + 1); continue; }
-        if (     *R_PORT == '\0' && strstr(line, "RSSH_PORT"))    { trim(     R_PORT, equal + 1); continue; }
-        if (  *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))     { trim(  DEVICE_ID, equal + 1); continue; }
-        if (      *DEBUG == '\0' && strstr(line, "DEBUG"))        { trim(      DEBUG, equal + 1); continue; }
+        if (   *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))       { trim(    SERVER_IP, equal + 1); continue; }
+        if ( *SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT"))     { trim(  SERVER_PORT, equal + 1); continue; }
+        if ( *SERVER_USER == '\0' && strstr(line, "RSSH_USER"))        { trim(  SERVER_USER, equal + 1); continue; }
+        if (      *R_PORT == '\0' && strstr(line, "RSSH_PORT"))        { trim(       R_PORT, equal + 1); continue; }
+        if (*RSSH_MONITOR == '\0' && strstr(line, "RSSH_MONITOR"))     { trim( RSSH_MONITOR, equal + 1); continue; }
+        if (   *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))         { trim(    DEVICE_ID, equal + 1); continue; }
+        if (       *DEBUG == '\0' && strstr(line, "DEBUG"))            { trim(        DEBUG, equal + 1); continue; }
         // {
         //     char *val = malloc(8 * sizeof(char));
         //     size_t size;
@@ -100,6 +103,7 @@ int main()
     LOG_I(">>>>>>>>>>>>>>>> environment variables >>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEVICEID",     DEVICE_ID);
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEBUG",        DEBUG);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_MONITOR", RSSH_MONITOR);
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_PORT",    R_PORT);
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_USER",    SERVER_USER);
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRIP",   SERVER_IP);
@@ -137,7 +141,7 @@ int main()
         info = check_proc("autossh");
         if (!info.is_alive)
         {
-            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSHH_PATH, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
+            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSHH_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
             LOG_I("### exec: \"%s\"\n", shell_cmd);
             status = system(shell_cmd);
 
