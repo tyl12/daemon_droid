@@ -12,7 +12,7 @@
 #include "utils.h"
 #include "error.h"
 
-#define AUTOSHH_PATH "/system/xbin/autossh"
+#define AUTOSSH_BIN_PATH "/system/bin/autossh"
 #define   LOCAL_PORT "22"
 #define     MAX_LINE 64
 
@@ -141,7 +141,7 @@ int main()
         info = check_proc("autossh");
         if (!info.is_alive)
         {
-            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSHH_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
+            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSSH_BIN_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
             LOG_I("### exec: \"%s\"\n", shell_cmd);
             status = system(shell_cmd);
 
