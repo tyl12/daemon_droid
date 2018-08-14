@@ -33,6 +33,7 @@ extern const char* const LAUNCH_AUTOSSH;
 /* sdcard: DOS filesystem?! */
 const char* const     ENV_PATH = "/sdcard/.environment";
 const char* const     SSH_PATH = "/system/bin/ssh";
+const char* const  SSH_LOGFILE = "/data/local/tmp/logfile_ssh";
 const char* const    SSHD_PATH = "/system/bin/sshd";
 const char* const UPGRADE_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/IceLocker"; /* an absolute path */
 const char* const  BACKUP_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/upgraded";
@@ -68,6 +69,7 @@ int main()
     bool isdebug;
 
     setenv("AUTOSSH_PATH", SSH_PATH, 1);
+    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE);
 
     /* get { key, value } from /sdcard/.environment */
     f = fopen(ENV_PATH, "r");
