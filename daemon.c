@@ -69,7 +69,7 @@ int main()
     bool isdebug;
 
     setenv("AUTOSSH_PATH", SSH_PATH, 1);
-    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE);
+    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
 
     /* get { key, value } from /sdcard/.environment */
     f = fopen(ENV_PATH, "r");
