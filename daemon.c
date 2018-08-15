@@ -48,7 +48,7 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "-M %s "                             /* monitor port */
                                    "-NR %s"                             /* forward port */
                                    ":localhost:%s "                     /* default ssh port of local is 22 */
-                                   "-i '/system/etc/ssh_host_rsa_key' " /* private key */
+                                   "-i '/data/ssh/ssh_host_rsa_key' "   /* private key */
                                    "-o 'StrictHostKeyChecking=no' "     /* without host authentication */
                                    "-o 'ServerAliveInterval=60' "       /* send heart beat every 60s */
                                    "-o 'ServerAliveCountMax=3' "        /* check alive max count */
