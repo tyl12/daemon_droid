@@ -123,7 +123,7 @@ int main()
         info = check_proc("sshd");
         if (!info.is_alive)
         {
-            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, "/system/etc/sshd_config");
+            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, "/system/etc/ssh/sshd_config");
             LOG_I("### exec: \"%s\"\n", shell_cmd);
             status = system(shell_cmd);
 
