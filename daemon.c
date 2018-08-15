@@ -70,6 +70,7 @@ int main()
 
     setenv("AUTOSSH_PATH", SSH_PATH, 1);
     setenv("AUTOSSH_DEBUG", "1", 1);
+    setenv("AUTOSSH_LOGLEVEL", "7", 1);
     setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
 
     /* get { key, value } from /sdcard/.environment */
