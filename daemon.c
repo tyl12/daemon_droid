@@ -12,7 +12,7 @@
 #include "utils.h"
 #include "error.h"
 
-#define AUTOSSH_BIN_PATH "/system/bin/autossh"
+#define AUTOSSH_BIN_PATH "/system/xbin/autossh"
 #define   LOCAL_PORT "22"
 #define     MAX_LINE 64
 
@@ -32,7 +32,7 @@ extern const char* const LAUNCH_AUTOSSH;
 
 /* sdcard: DOS filesystem?! */
 const char* const     ENV_PATH = "/sdcard/.environment";
-const char* const     SSH_PATH = "/system/bin/ssh";
+const char* const     SSH_PATH = "/system/xbin/ssh";
 const char* const  SSH_LOGFILE = "/data/local/tmp/logfile_ssh";
 const char* const    SSHD_PATH = "/system/bin/sshd";
 const char* const UPGRADE_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/IceLocker"; /* an absolute path */
@@ -69,6 +69,7 @@ int main()
     bool isdebug;
 
     setenv("AUTOSSH_PATH", SSH_PATH, 1);
+    setenv("AUTOSSH_DEBUG", "1", 1);
     setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
 
     /* get { key, value } from /sdcard/.environment */
