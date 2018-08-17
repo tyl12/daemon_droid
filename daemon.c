@@ -12,7 +12,7 @@
 #include "utils.h"
 #include "error.h"
 
-#define AUTOSSH_BIN_PATH "/system/xbin/autossh"
+#define AUTOSSH_BIN_PATH "/system/bin/autossh"
 #define   LOCAL_PORT "22"
 #define     MAX_LINE 64
 
@@ -32,8 +32,9 @@ extern const char* const LAUNCH_AUTOSSH;
 
 /* sdcard: DOS filesystem?! */
 const char* const     ENV_PATH = "/sdcard/.environment";
-const char* const     SSH_PATH = "/system/xbin/ssh";
+const char* const     SSH_PATH = "/system/bin/ssh";
 const char* const  SSH_LOGFILE = "/data/local/tmp/logfile_ssh";
+const char* const  SSHD_CONFIG = "/system/etc/ssh/sshd_config";
 const char* const    SSHD_PATH = "/system/bin/sshd";
 const char* const UPGRADE_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/IceLocker"; /* an absolute path */
 const char* const  BACKUP_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/upgraded";
@@ -125,7 +126,7 @@ int main()
         info = check_proc("sshd");
         if (!info.is_alive)
         {
-            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, "/system/etc/ssh/sshd_config");
+            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, SSHD_CONFIG);
             LOG_I("### exec: \"%s\"\n", shell_cmd);
             status = system(shell_cmd);
 
