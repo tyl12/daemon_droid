@@ -16,13 +16,13 @@
 #define   LOCAL_PORT "22"
 #define     MAX_LINE 64
 
-static char   SERVER_IP[64] = { '\0' };
-static char SERVER_PORT[64] = { '\0' };
-static char SERVER_USER[64] = { '\0' };
-static char      R_PORT[64] = { '\0' };
+static char    SERVER_IP[64] = { '\0' };
+static char  SERVER_PORT[64] = { '\0' };
+static char  SERVER_USER[64] = { '\0' };
+static char       R_PORT[64] = { '\0' };
 static char RSSH_MONITOR[64] = { '\0' };
-static char   DEVICE_ID[64] = { '\0' };
-static char       DEBUG[64] = { '\0' };
+static char    DEVICE_ID[64] = { '\0' };
+static char        DEBUG[64] = { '\0' };
 
 static int  restart_cnt = 0; /* autossh should be launched after network */
 
@@ -88,13 +88,13 @@ int main()
             continue;
 
         *equal = '\0';
-        if (   *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))       { trim(    SERVER_IP, equal + 1); continue; }
-        if ( *SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT"))     { trim(  SERVER_PORT, equal + 1); continue; }
-        if ( *SERVER_USER == '\0' && strstr(line, "RSSH_USER"))        { trim(  SERVER_USER, equal + 1); continue; }
-        if (      *R_PORT == '\0' && strstr(line, "RSSH_PORT"))        { trim(       R_PORT, equal + 1); continue; }
-        if (*RSSH_MONITOR == '\0' && strstr(line, "RSSH_MONITOR"))     { trim( RSSH_MONITOR, equal + 1); continue; }
-        if (   *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))         { trim(    DEVICE_ID, equal + 1); continue; }
-        if (       *DEBUG == '\0' && strstr(line, "DEBUG"))            { trim(        DEBUG, equal + 1); continue; }
+        if (   *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))   { trim(    SERVER_IP, equal + 1); continue; }
+        if ( *SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT")) { trim(  SERVER_PORT, equal + 1); continue; }
+        if ( *SERVER_USER == '\0' && strstr(line, "RSSH_USER"))    { trim(  SERVER_USER, equal + 1); continue; }
+        if (      *R_PORT == '\0' && strstr(line, "RSSH_PORT"))    { trim(       R_PORT, equal + 1); continue; }
+        if (*RSSH_MONITOR == '\0' && strstr(line, "RSSH_MONITOR")) { trim( RSSH_MONITOR, equal + 1); continue; }
+        if (   *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))     { trim(    DEVICE_ID, equal + 1); continue; }
+        if (       *DEBUG == '\0' && strstr(line, "DEBUG"))        { trim(        DEBUG, equal + 1); continue; }
         // {
         //     char *val = malloc(8 * sizeof(char));
         //     size_t size;
@@ -120,6 +120,14 @@ int main()
 #if 1
     for (;;)
     {
+        get_time(time_s);
+        LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+        LOG_I("###\n");
+        LOG_I("### exec: \"sh /system/etc/inter.sh\"");
+        system("sh /system/etc/inter.sh");
+        LOG_I("###\n");
+        LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+
         get_time(time_s);
         LOG_I(">>>>>>>>>>>>>>>>>>>>> check sshd >>>>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
