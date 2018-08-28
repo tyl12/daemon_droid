@@ -24,7 +24,8 @@ typedef struct
 } proc_info;
 
 void pr_exit(int state);
-void check_apk(char *apk);
+void check_apk(const char *path, char *apk);
+void check_ver(char *pathname);
 int link_data();
 void list2vec(char *list, char **vec);
 proc_info check_proc(const char *proc_name);

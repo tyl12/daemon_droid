@@ -2,6 +2,7 @@
 // Created by david on 7/3/18.
 //
 
+#include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@ static char        DEBUG[64] = { '\0' };
 static int  restart_cnt = 0; /* autossh should be launched after network */
 
 extern const char* const UPGRADE_PATH;
-extern const char* const DATA_LINK;
+extern const char* const UPGRADE_FILE;
 extern const char* const LAUNCH_AUTOSSH;
 
 /* sdcard: DOS filesystem?! */
@@ -36,9 +37,17 @@ const char* const     SSH_PATH = "/system/bin/ssh";
 const char* const  SSH_LOGFILE = "/data/local/tmp/logfile_ssh";
 const char* const  SSHD_CONFIG = "/system/etc/ssh/sshd_config";
 const char* const    SSHD_PATH = "/system/bin/sshd";
+#if 0
+extern const char* const DATA_LINK;
+
 const char* const UPGRADE_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/IceLocker"; /* an absolute path */
 const char* const  BACKUP_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/upgraded";
 const char* const    DATA_LINK = "/data/data/com.xiaomeng.icelocker/files/data_xm";
+#else
+const char* const UPGRADE_PATH = "/sdcard/iceLocker/upgrade/%s";
+const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
+const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/data_xm";
+#endif
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
 const char* const  INSTALL_APK = "pm install -r -t --user 0 "
                                  "%s";                                                           /* apk name with absolute path */
@@ -58,152 +67,27 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "-p %s";                             /* ssh port of forward server */
 
 
-int main()
+
+void* monitor_app(void *arg)
 {
     pid_t pid;
-    int status;
-    int timer;
+    int status, restart_cnt;
     proc_info info;
-    char shell_cmd[256];
-    char time_s[64];
-    FILE *f;
-    bool isdebug;
-
-    setenv("AUTOSSH_PATH", SSH_PATH, 1);
-    setenv("AUTOSSH_DEBUG", "1", 1);
-    setenv("AUTOSSH_LOGLEVEL", "7", 1);
-    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
-
-    /* get { key, value } from /sdcard/.environment */
-    f = fopen(ENV_PATH, "r");
-    if (!f)
-        err_sys("cannot open .environment");
-
-    char line[MAX_LINE];
-    char *equal;
-    printf("+++ [%s] you have reached line %d\n", __FUNCTION__, __LINE__);
-    while (fgets(line, MAX_LINE, f))
-    {
-        if ((equal = strchr(line, '=')) == NULL)
-            continue;
-
-        *equal = '\0';
-        if (   *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))   { trim(    SERVER_IP, equal + 1); continue; }
-        if ( *SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT")) { trim(  SERVER_PORT, equal + 1); continue; }
-        if ( *SERVER_USER == '\0' && strstr(line, "RSSH_USER"))    { trim(  SERVER_USER, equal + 1); continue; }
-        if (      *R_PORT == '\0' && strstr(line, "RSSH_PORT"))    { trim(       R_PORT, equal + 1); continue; }
-        if (*RSSH_MONITOR == '\0' && strstr(line, "RSSH_MONITOR")) { trim( RSSH_MONITOR, equal + 1); continue; }
-        if (   *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))     { trim(    DEVICE_ID, equal + 1); continue; }
-        if (       *DEBUG == '\0' && strstr(line, "DEBUG"))        { trim(        DEBUG, equal + 1); continue; }
-        // {
-        //     char *val = malloc(8 * sizeof(char));
-        //     size_t size;
-        //     size = trim(val, equal + 1);
-        //     DEBUG = (size == 4) ? 1 : 0; /* 5 - size */
-        //     free(val);
-        // }
-    }
-
-    get_time(time_s);
-    LOG_I(">>>>>>>>>>>>>>>> environment variables >>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEVICEID",     DEVICE_ID);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEBUG",        DEBUG);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_MONITOR", RSSH_MONITOR);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_PORT",    R_PORT);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_USER",    SERVER_USER);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRIP",   SERVER_IP);
-    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRPORT", SERVER_PORT);
-    LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
-
-    fclose(f);
-    isdebug = strlen(DEBUG) == 4 ? true : false;
-#if 1
+    char shell_cmd[1024];
+    restart_cnt = -1;
     for (;;)
     {
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-        LOG_I("###\n");
-        LOG_I("### exec: \"sh /system/etc/inter.sh\"");
-        system("sh /system/etc/inter.sh");
-        LOG_I("###\n");
-        LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
-
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>> check sshd >>>>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-        LOG_I("###\n");
-        info = check_proc("sshd");
-        if (!info.is_alive)
-        {
-            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, SSHD_CONFIG);
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
-            status = system(shell_cmd);
-
-            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
-            if (status == 127) { LOG_I("exec fails"); }
-        }
-        else
-        {
-            LOG_I("### \"%s\" is running with pid %d\n", info.name, info.pid);
-        }
-        LOG_I("###\n");
-        LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
-
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>> check autossh >>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-        LOG_I("###\n");
-        info = check_proc("autossh");
-        if (!info.is_alive)
-        {
-            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSSH_BIN_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
-            status = system(shell_cmd);
-
-            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
-            if (status == 127) { LOG_I("exec fails"); }
-        }
-        else
-        {
-            LOG_I("### \"%s\" is running with pid %d\n", info.name, info.pid);
-
-            /* plan B */
-            if (!isdebug && timer++ > 60)
-            {
-                timer = 0;
-                goto restart;
-            }
-
-            if (restart_cnt == 0) /* exec regularly */
-            {
-                static int countdown = 0;
-                if (countdown++ < 6)
-                {
-                    LOG_I("### [%02d] keep ssh family alive", countdown);
-                    goto alive;
-                }
-
-restart:
-                LOG_I("### [%d] restart ssh family to make sure proxy is available (critical)\n", ++restart_cnt);
-                kill_proc("autossh");
-                kill_proc("ssh");
-                kill_proc("sshd");
-
-                if (restart_cnt > 0x0fffffff)
-                    restart_cnt = 0;
-            }
-        }
-alive:
-        LOG_I("###\n");
-        LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
-
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>> check IceLocker >>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-        LOG_I("###\n");
         info = check_proc("com.xiaomeng.icelocker");
         if (!info.is_alive)
         {
+#if 0
+            if (++restart_cnt == 10)
+                system("restart");
+#endif
+
             char **cmd_vec = calloc(1, BUF_SIZE);
 
-            sprintf(shell_cmd, LAUNCH_APK);
+            strcpy(shell_cmd, LAUNCH_APK);
             list2vec(shell_cmd, cmd_vec);
 
             LOG_I("### exec: \"%s\"\n", shell_cmd);
@@ -226,22 +110,152 @@ alive:
         }
         else
         {
-            LOG_I("### \"%s\" is running with pid %d\n", info.name, info.pid);
-#if 0
-            char *wchan = calloc(32, sizeof(char));
-            getwchan(wchan, info.pid);
-            if (*wchan)
-            {
-                lowerstr(wchan);
-                if (strstr(wchan, "futex") == wchan)
-                {
-                    LOG_I("### restart com.xiaomeng.icelocker");
-                    kill(info.pid, SIGKILL);
-                }
-            }
-            free(wchan);
-#endif
+            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
         }
+
+        if (strlen(DEBUG) == 4)
+            sleep(10);
+        else
+            sleep(60);
+    }
+}
+
+void* monitor_ssh(void *arg)
+{
+    int timer, status, restart_cnt = 0;
+    proc_info info;
+    char shell_cmd[1024];
+    bool isdebug = strlen(DEBUG) == 4 ? true : false;
+
+    for (;;)
+    {
+        info = check_proc("sshd");
+        if (!info.is_alive)
+        {
+            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, SSHD_CONFIG);
+            LOG_I("### exec: \"%s\"\n", shell_cmd);
+            status = system(shell_cmd);
+
+            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
+            if (status == 127) { LOG_I("exec fails"); }
+        }
+        else
+        {
+            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
+        }
+
+        info = check_proc("autossh");
+        if (!info.is_alive)
+        {
+            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSSH_BIN_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
+            LOG_I("### exec: \"%s\"\n", shell_cmd);
+            status = system(shell_cmd);
+
+            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
+            if (status == 127) { LOG_I("exec fails"); }
+        }
+        else
+        {
+            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
+
+            if (!isdebug && timer++ > 60)
+            {
+                timer = 0;
+                goto restart;
+            }
+
+            if (restart_cnt == 0) /* exec regularly */
+            {
+                static int countdown = 0;
+                if (countdown++ < 6)
+                {
+                    LOG_I("### [%02d] keep ssh family alive", countdown);
+                    goto next;
+                }
+
+restart:
+                LOG_I("### [%d] restart ssh family to make sure proxy is available (critical)\n", ++restart_cnt);
+                kill_proc("autossh");
+                kill_proc("ssh");
+                kill_proc("sshd");
+
+                if (restart_cnt > 0x0fffffff)
+                    restart_cnt = 0;
+            }
+        }
+next:
+        if (strlen(DEBUG) == 4)
+            sleep(10);
+        else
+            sleep(60);
+    }
+}
+
+int main()
+{
+    pid_t pid;
+    int status;
+    proc_info info;
+    char shell_cmd[1024];
+    char time_s[64];
+    FILE *f;
+
+    setenv("AUTOSSH_PATH", SSH_PATH, 1);
+    setenv("AUTOSSH_DEBUG", "1", 1);
+    setenv("AUTOSSH_LOGLEVEL", "7", 1);
+    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
+
+    /* get { key, value } from /sdcard/.environment */
+    f = fopen(ENV_PATH, "r");
+    if (!f)
+        err_sys("cannot open .environment");
+
+    char line[MAX_LINE];
+    char *equal;
+    while (fgets(line, MAX_LINE, f))
+    {
+        if ((equal = strchr(line, '=')) == NULL)
+            continue;
+
+        *equal = '\0';
+        if (   *SERVER_IP == '\0' && strstr(line, "RSSH_SVRIP"))   { trim(    SERVER_IP, equal + 1); continue; }
+        if ( *SERVER_PORT == '\0' && strstr(line, "RSSH_SVRPORT")) { trim(  SERVER_PORT, equal + 1); continue; }
+        if ( *SERVER_USER == '\0' && strstr(line, "RSSH_USER"))    { trim(  SERVER_USER, equal + 1); continue; }
+        if (      *R_PORT == '\0' && strstr(line, "RSSH_PORT"))    { trim(       R_PORT, equal + 1); continue; }
+        if (*RSSH_MONITOR == '\0' && strstr(line, "RSSH_MONITOR")) { trim( RSSH_MONITOR, equal + 1); continue; }
+        if (   *DEVICE_ID == '\0' && strstr(line, "DEVICEID"))     { trim(    DEVICE_ID, equal + 1); continue; }
+        if (       *DEBUG == '\0' && strstr(line, "DEBUG"))        { trim(        DEBUG, equal + 1); continue; }
+    }
+
+    LOG_I(">>>>>>>>>>>>>>>> environment variables >>>>>>>>>>>>>>>>>>>>>\n");
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEVICEID",     DEVICE_ID);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_DEBUG",        DEBUG);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_MONITOR", RSSH_MONITOR);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_PORT",    R_PORT);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_USER",    SERVER_USER);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRIP",   SERVER_IP);
+    LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRPORT", SERVER_PORT);
+    LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+
+    fclose(f);
+
+    pthread_t thrd_app, thrd_ssh;
+    status = (pthread_create(&thrd_app, NULL, monitor_app, NULL) != 0);
+    status += (pthread_create(&thrd_ssh, NULL, monitor_ssh, NULL) != 0);
+    if (status != 0)
+    {
+        perror("cannot create threads");
+        exit(1);
+    }
+
+#if 1
+    for (;;)
+    {
+        get_time(time_s);
+        LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+        LOG_I("###\n");
+        LOG_I("### exec: \"sh /system/etc/inter.sh\"");
+        system("sh /system/etc/inter.sh");
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
@@ -249,8 +263,10 @@ alive:
         LOG_I(">>>>>>>>>>>>>>>>>>>>> check update >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
         char *apk = calloc(1, BUF_SIZE);
-        check_apk(apk);
-        if (apk[0] == '\0')
+        char pathname[256] = { '\0' };
+        check_ver(pathname);
+        check_apk(pathname, apk);
+        if (*pathname == 0 || *apk == 0)
         {
             LOG_I("### there is no available update...\n");
             goto next;
@@ -260,9 +276,8 @@ alive:
          * new apk found:
          * 1. uninstall old apk (with -k)
          * 2. install new apk
-         * 3. creak symbolic for data_xm
-         * 4. move 'old' apk to /data/data/com.xiaoemng.icelocker/files/upgraded
-         * 5. launch com.xiaomeng.icelocker
+         * 3. copy /sdcard/iceLocker/upgrade/IceLocker_versionxxx/data_xm to DATA_PATH
+         * 4. launch com.xiaomeng.icelocker
          */
         system(UNINSTALL_APK); /* STEP 1 */
 
@@ -270,37 +285,21 @@ alive:
         sprintf(shell_cmd, INSTALL_APK, apk);
         system(shell_cmd);
 
-        status = link_data();           /* STEP 3 */
-        switch(status)
-        {
-            case -1:
-                LOG_I("### cannot make soft link: %s", strerror(errno));
-                break;
-            case -2:
-                LOG_I("### %s/data_xm do not exist", UPGRADE_PATH);
-                break;
-            default:
-                break;
-        }
-
-        /* STEP 4 */
+        /* STEP 3 */
         char *cur_dir = calloc(1, BUF_SIZE);
         getcwd(cur_dir, BUF_SIZE);
         LOG_I("### current work directory: %s\n", cur_dir);
-        LOG_I("### change dir to: %s\n", UPGRADE_PATH);
-        chdir(UPGRADE_PATH);
-        char *apk_name = strrchr(apk, '/') + 1;
-        // system("mkdir -p ../upgraded"); /* make sure dir "../upgraded" is available */
-        sprintf(shell_cmd, "mv %s ../upgraded/", apk_name);
+        LOG_I("### change dir to: %s\n", pathname);
+        chdir(pathname);
+        sprintf(shell_cmd, "cp -rf data_xm %s", DATA_PATH);
         LOG_I("### %s\n", shell_cmd);
         system(shell_cmd);
         chdir(cur_dir);
         free(cur_dir);
 
-        system(LAUNCH_APK);    /* STEP 5 */
+        system(LAUNCH_APK);    /* STEP 4 */
 next:
         free(apk);
-        get_time(time_s);
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
         if (strlen(DEBUG) == 4)
@@ -309,6 +308,10 @@ next:
             sleep(60);
     }
 #endif
+
+    /* thrd_app & thrd_ssh never join */
+    pthread_join(thrd_app, NULL);
+    pthread_join(thrd_ssh, NULL);
 
     return 0;
 }

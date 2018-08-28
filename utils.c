@@ -14,9 +14,13 @@
 #include <time.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 
 extern const char* const UPGRADE_PATH;
+extern const char* const UPGRADE_FILE;
+#if 0
 extern const char* const DATA_LINK;
+#endif
 
 
 void pr_exit(int status)
@@ -48,6 +52,79 @@ static void mkdirp(const char *filepath)
     free(shell_cmd);
 }
 
+static bool is_dir(const char *path)
+{
+    struct stat statbuf;
+    if (lstat(path, &statbuf) == -1)
+    {
+        perror("lstat");
+        return false;
+    }
+
+    switch (statbuf.st_mode & S_IFMT)
+    {
+        case S_IFBLK:  printf("block device\n");           break;
+        case S_IFCHR:  printf("character device\n");       break;
+        case S_IFDIR:  printf("directory\n"); return true; break;
+        case S_IFIFO:  printf("FIFO/pipe\n");              break;
+        case S_IFLNK:  printf("symlink\n");                break;
+        case S_IFREG:  printf("regular file\n");           break;
+        case S_IFSOCK: printf("socket\n");                 break;
+        default:       printf("unknown?\n");               break;
+    }
+    return false;
+}
+
+void cls_ver(const char *filepath)
+{
+    fclose(fopen(filepath, "w"));
+}
+
+void check_apk(const char *path, char *apk)
+{
+    struct dirent *file;
+    DIR *dir;
+
+    dir = opendir(path);
+    if (!dir)
+        return;
+
+    char *name = (char*)malloc(256);
+    memset(name, 0, 256);
+    while ((file = readdir(dir)))
+    {
+        char *fname = file->d_name;
+        if (strstr(fname, "apk"))
+        {
+            char *tmp1, *tmp2;
+            tmp1 = tmp2 = fname;
+            while ((tmp1 = strstr(tmp1 + 1, "apk")))
+            {
+                tmp2 = tmp1;
+            }
+
+            if (tmp2[3] != '\0')
+            {
+                continue;
+            }
+
+            sprintf(name, "%s/%s", path, fname);
+
+            struct stat st;
+            lstat(name, &st);
+
+            if ((st.st_mode & S_IFMT) == S_IFREG)
+            {
+                strcpy(apk, name);
+                break;
+            }
+        }
+    }
+
+    free(name);
+    closedir(dir);
+}
+#if 0
 void check_apk(char *apk)
 {
     struct dirent *file;
@@ -144,6 +221,35 @@ int link_data()
 
     return state;
 }
+#else
+void check_ver(char *pathname)
+{
+    int fd, nread;
+    if ((fd = open(UPGRADE_FILE, O_RDONLY)) == -1)
+    {
+        perror("open upgrade file failed");
+        return;
+    }
+
+    char buf[256] = { '\0' };
+    nread = read(fd, buf, 256);
+    if (nread == 0 || !strstr(buf, "version"))
+        goto end;
+
+    sprintf(pathname, UPGRADE_PATH, buf);
+    if (!is_dir(pathname))
+    {
+        puts(pathname);
+        *pathname = '\0';
+        goto end;
+    }
+
+    cls_ver(UPGRADE_FILE);
+
+end:
+    close(fd);
+}
+#endif
 
 void list2vec(char *list, char **vec)
 {
@@ -154,7 +260,7 @@ void list2vec(char *list, char **vec)
 
     char *token;
     int idx = 0;
-    const static char* delim = "\t ";
+    static const char* delim = "\t ";
 
     token = strtok(list, delim);
     while (token != NULL)
@@ -288,7 +394,7 @@ size_t trim(char *out, const char *src)
 
 void kill_proc(const char *name)
 {
-    static char shell_cmd[256];
+    char shell_cmd[256];
     pid_t pid  = -1;
     get_pid(&pid, name);
     if (pid != -1)
