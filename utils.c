@@ -57,20 +57,20 @@ static bool is_dir(const char *path)
     struct stat statbuf;
     if (lstat(path, &statbuf) == -1)
     {
-        perror("lstat");
+        LOG_I("[%s]lstat error: %s", __FUNCTION__, strerror(errno));
         return false;
     }
 
     switch (statbuf.st_mode & S_IFMT)
     {
-        case S_IFBLK:  printf("block device\n");           break;
-        case S_IFCHR:  printf("character device\n");       break;
-        case S_IFDIR:  printf("directory\n"); return true; break;
-        case S_IFIFO:  printf("FIFO/pipe\n");              break;
-        case S_IFLNK:  printf("symlink\n");                break;
-        case S_IFREG:  printf("regular file\n");           break;
-        case S_IFSOCK: printf("socket\n");                 break;
-        default:       printf("unknown?\n");               break;
+        case S_IFBLK:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "block device");           break;
+        case S_IFCHR:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "character device");       break;
+        case S_IFDIR:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "directory"); return true; break;
+        case S_IFIFO:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "FIFO/pipe");              break;
+        case S_IFLNK:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "symlink");                break;
+        case S_IFREG:  LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "regular file");           break;
+        case S_IFSOCK: LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "socket");                 break;
+        default:       LOG_I("[%s]\"%s\" is %s", __FUNCTION__, path, "unknown?");               break;
     }
     return false;
 }
@@ -124,115 +124,19 @@ void check_apk(const char *path, char *apk)
     free(name);
     closedir(dir);
 }
-#if 0
-void check_apk(char *apk)
-{
-    struct dirent *file;
-    DIR *dir;
 
-    // mkdirp(UPGRADE_PATH); /* make sure upgrade path is existed */ (SIGSEGV may occur)
-    dir = opendir(UPGRADE_PATH);
-    if (!dir) /* UPGRADE_PATH do not exist */
-        return;
-
-    char *name = (char*)malloc(256);
-    memset(name, 0, 256);
-    while ((file = readdir(dir)))
-    {
-        char *fname = file->d_name;
-        if (strstr(fname, "apk"))
-        {
-            char *tmp1, *tmp2;
-            tmp1 = tmp2 = fname;
-            /* to distinguish multiple "apk" contained in file name */
-            while ((tmp1 = strstr(tmp1 + 1, "apk")))
-            {
-                tmp2 = tmp1;
-            }
-
-            if (tmp2[3] != '\0')
-            {
-                continue;
-            }
-
-            sprintf(name, "%s/%s", UPGRADE_PATH, fname);
-
-            struct stat st;
-            lstat(name, &st);
-
-            if ((st.st_mode & S_IFMT) == S_IFREG) /* make sure *.apk is a regular file */
-            {
-                strcpy(apk, name);
-                break;
-            }
-        }
-    }
-
-    free(name);
-    closedir(dir);
-}
-
-int link_data()
-{
-    int state;
-    struct dirent *file;
-    DIR *dir;
-    dir = opendir(UPGRADE_PATH);
-
-    char name[256] = { '\0' };
-    char *tname = malloc(256);
-    while ((file = readdir(dir)))
-    {
-        char *fname = file->d_name;
-        if ((fname = strstr(fname, "data_xm")))
-        {
-            if (fname != file->d_name)
-            {
-                continue;
-            }
-
-            sprintf(tname, "%s/%s", UPGRADE_PATH, fname);
-
-            struct stat st;
-            lstat(tname, &st);
-            if ((st.st_mode & S_IFMT) != S_IFDIR)
-            {
-                continue;
-            }
-
-            memcpy(name, tname, strlen(tname) + 1);
-            break;
-        }
-    }
-
-    if (*name == '\0')
-    {
-        return -2; /* not found */
-    }
-
-
-    /* remove old link data */
-    sprintf(tname, "rm -rf %s", DATA_LINK);
-    system(tname);
-    free(tname);
-
-    /* create symbolic file */
-    state = symlink(name, DATA_LINK);
-
-    return state;
-}
-#else
 void check_ver(char *pathname)
 {
     int fd, nread;
     if ((fd = open(UPGRADE_FILE, O_RDONLY)) == -1)
     {
-        perror("open upgrade file failed");
+        LOG_I("[%s]open upgrade file failed: %s", __FUNCTION__, strerror(errno));
         return;
     }
 
     char buf[256] = { '\0' };
     nread = read(fd, buf, 256);
+    trim(buf, buf);
     if (nread == 0 || !strstr(buf, "version"))
         goto end;
 
@@ -249,7 +153,6 @@ void check_ver(char *pathname)
 end:
     close(fd);
 }
-#endif
 
 void list2vec(char *list, char **vec)
 {
@@ -297,7 +200,7 @@ proc_info check_proc(const char *proc_name)
                 FILE *fp = fopen(cmdline_f, "r");
                 if (!fp)
                 {
-                    printf("### fopen(\"%s\") failed\n", cmdline_f);
+                    printf("fopen(\"%s\") failed\n", cmdline_f);
                     continue;
                 }
 
@@ -400,7 +303,7 @@ void kill_proc(const char *name)
     if (pid != -1)
     {
         sprintf(shell_cmd, "kill -9 %d", pid);
-        LOG_I("### KILL \"%-7s\" by exec: \"%s\"", name, shell_cmd);
+        LOG_I("KILL \"%-7s\" by exec: \"%s\"", name, shell_cmd);
         system(shell_cmd);
     }
 }
@@ -422,18 +325,18 @@ void getwchan(char *wchan, pid_t pid) /* waitting channel */
     FILE *fp = fopen(filepath, "r");
     if (!fp)
     {
-        LOG_I("### cannot open \"%s\": %s", filepath, strerror(errno));
+        LOG_I("cannot open \"%s\": %s", filepath, strerror(errno));
         return;
     }
 
     char *ret = fgets(str, len, fp);
     if (!ret)
     {
-        LOG_I("### read \"%s\" failed: %s", filepath, strerror(errno));
+        LOG_I("read \"%s\" failed: %s", filepath, strerror(errno));
         return;
     }
 
-    LOG_I("### [%d][wchan] - %s\n", pid, str);
+    LOG_I("[%d][wchan] - %s\n", pid, str);
     if (wchan)
         strcpy(wchan, str);
 
