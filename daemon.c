@@ -73,11 +73,23 @@ void* monitor_app(void *arg)
     pid_t pid;
     int status, restart_cnt;
     proc_info info;
+    proc_info selftest_info;
     char shell_cmd[1024];
     restart_cnt = -1;
     for (;;)
     {
+        selftest_info = check_proc("com.xiaomeng.androidselftest");
         info = check_proc("com.xiaomeng.icelocker");
+        if(selftest_info.is_alive)
+        {
+            if(info.is_alive)
+            {
+                kill_proc("com.xiaomeng.icelocker");
+            }
+            sleep(10);
+            continue;
+        }
+
         if (!info.is_alive)
         {
 #if 0
