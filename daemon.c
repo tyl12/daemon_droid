@@ -14,7 +14,7 @@
 #include "error.h"
 
 #define AUTOSSH_BIN_PATH "/system/bin/autossh"
-#define      LOGCAT_PATH "/sdcard/iceLocker/IceLocker/Data/log/need_upload_logs/%s"
+#define      LOGCAT_PATH "/sdcard/iceLocker/Data/log/need_upload_logs/%s"
 #define       LOCAL_PORT "22"
 #define         MAX_LINE 64
 
