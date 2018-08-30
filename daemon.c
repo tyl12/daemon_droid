@@ -92,9 +92,21 @@ void* monitor_app(void *arg)
 
         if (!info.is_alive)
         {
-#if 0
-            if (++restart_cnt == 10)
-                system("restart");
+#if 1
+            FILE* fp = fopen("/sdcard/disable_reboot", "r");
+            bool is_reboot = fp ? false : true;
+            is_reboot || fclose(fp);
+
+            if (is_reboot && ++restart_cnt >= 10)
+            {
+                char cur_time[64];
+                get_time(cur_time);
+                fp = fopen("/sdcard/reboot_log", "a+");
+                fprintf(fp, "%s reboot system\n", cur_time);
+                fclose(fp);
+                system("reboot");
+            }
+            printf("[%s]restart_cnt = %d\n", __FUNCTION__, restart_cnt);
 #endif
 
             char **cmd_vec = calloc(1, BUF_SIZE);
