@@ -14,8 +14,9 @@
 #include "error.h"
 
 #define AUTOSSH_BIN_PATH "/system/bin/autossh"
-#define   LOCAL_PORT "22"
-#define     MAX_LINE 64
+#define      LOGCAT_PATH "/sdcard/iceLocker/IceLocker/Data/log/need_upload_logs/%s"
+#define       LOCAL_PORT "22"
+#define         MAX_LINE 64
 
 static char    SERVER_IP[64] = { '\0' };
 static char  SERVER_PORT[64] = { '\0' };
@@ -31,23 +32,14 @@ extern const char* const UPGRADE_PATH;
 extern const char* const UPGRADE_FILE;
 extern const char* const LAUNCH_AUTOSSH;
 
-/* sdcard: DOS filesystem?! */
 const char* const     ENV_PATH = "/sdcard/.environment";
 const char* const     SSH_PATH = "/system/bin/ssh";
 const char* const  SSH_LOGFILE = "/data/local/tmp/logfile_ssh";
 const char* const  SSHD_CONFIG = "/system/etc/ssh/sshd_config";
 const char* const    SSHD_PATH = "/system/bin/sshd";
-#if 0
-extern const char* const DATA_LINK;
-
-const char* const UPGRADE_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/IceLocker"; /* an absolute path */
-const char* const  BACKUP_PATH = "/data/data/com.xiaomeng.icelocker/files/xm/upgrade/upgraded";
-const char* const    DATA_LINK = "/data/data/com.xiaomeng.icelocker/files/data_xm";
-#else
 const char* const UPGRADE_PATH = "/sdcard/iceLocker/upgrade/%s";
 const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
 const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/data_xm";
-#endif
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
 const char* const  INSTALL_APK = "pm install -r -t --user 0 "
                                  "%s";                                                           /* apk name with absolute path */
@@ -67,6 +59,55 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "-p %s";                             /* ssh port of forward server */
 
 
+static void exec_cmd(const char *shell_cmd)
+{
+    LOG_I("[THREAD-ID:%zu]exec: \"%s\"", pthread_self(), shell_cmd);
+    system(shell_cmd);
+}
+
+void* monitor_logcat(void *arg)
+{
+    int status, pid;
+    struct timespec ts;
+    char cur_time[64];
+    char shell_cmd[1024];
+    char filename[64];
+    for (;;)
+    {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        struct tm tm1 = *localtime(&ts.tv_sec);
+        sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour);
+        sprintf(filename, ".XM_%s.log", cur_time);
+
+        sprintf(shell_cmd, "logcat -d -t 200 -f " LOGCAT_PATH, filename); /* backup */
+        exec_cmd(shell_cmd);
+        strcpy(shell_cmd, "logcat -c"); /* clear */
+        exec_cmd(shell_cmd);
+
+        sprintf(shell_cmd, "timeout 3h logcat -s >> " LOGCAT_PATH, filename);
+        LOG_I("[%s]exec: \"%s\"", __FUNCTION__, shell_cmd);
+        char **cmd_vec = calloc(1, BUF_SIZE);
+        list2vec(shell_cmd, cmd_vec);
+
+        if ((pid = fork()) < 0)
+        {
+            err_sys("fork error");
+        }
+        else if (pid == 0) /* child process */
+        {
+            execvp("/system/bin/timeout", cmd_vec);
+            _Exit(127);
+        }
+        else
+        {
+            waitpid(pid, &status, 0);
+            pr_exit(status); /* exit with 142 */
+            sprintf(shell_cmd, "mv " LOGCAT_PATH " " LOGCAT_PATH, filename, filename + 1);
+            exec_cmd(shell_cmd);
+        }
+        free(cmd_vec);
+    }
+}
 
 void* monitor_app(void *arg)
 {
@@ -263,9 +304,10 @@ int main()
 
     fclose(f);
 
-    pthread_t thrd_app, thrd_ssh;
+    pthread_t thrd_app, thrd_ssh, thrd_logcat;
     status = (pthread_create(&thrd_app, NULL, monitor_app, NULL) != 0);
     status += (pthread_create(&thrd_ssh, NULL, monitor_ssh, NULL) != 0);
+    status += (pthread_create(&thrd_logcat, NULL, monitor_logcat, NULL) != 0);
     if (status != 0)
     {
         perror("cannot create threads");

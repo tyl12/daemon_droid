@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 extern const char* const UPGRADE_PATH;
 extern const char* const UPGRADE_FILE;
@@ -27,11 +28,11 @@ void pr_exit(int status)
 {
     if (WIFEXITED(status))
     {
-        printf("normal termination, exit status = %d\n", WEXITSTATUS(status));
+        LOG_I("[THREAD-ID:%zu]normal termination, exit status = %d\n", pthread_self(), WEXITSTATUS(status));
     }
     else if (WIFSIGNALED(status))
     {
-        printf("abnormal termination, signal number = %d%s\n", WTERMSIG(status),
+        LOG_I("[THREAD-ID:%zu]abnormal termination, signal number = %d%s\n", pthread_self(), WTERMSIG(status),
 #ifdef WCOREDUMP
                WCOREDUMP(status) ? " (core file generated)" : "");
 #else
@@ -40,7 +41,7 @@ void pr_exit(int status)
     }
     else if (WIFSTOPPED(status))
     {
-        printf("child stopped, signal number = %d\n", WSTOPSIG(status));
+        LOG_I("[THREAD-ID:%zu]child stopped, signal number = %d\n", pthread_self(), WSTOPSIG(status));
     }
 }
 
@@ -263,7 +264,7 @@ void get_time(char *time_s)
     struct tm tm1 = *localtime(&ts.tv_sec);
     int64_t nanosec = ts.tv_nsec / 1000000 % 1000;
 
-    sprintf(time_s, "[%02d/%02d-%02d:%02d:%02d.%03ld]", tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec, nanosec);
+    sprintf(time_s, "[%02d/%02d/%4d-%02d:%02d:%02d.%03ld]", tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_year + 1900, tm1.tm_hour, tm1.tm_min, tm1.tm_sec, nanosec);
 }
 
 /**
