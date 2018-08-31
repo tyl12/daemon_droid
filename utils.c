@@ -19,10 +19,6 @@
 
 extern const char* const UPGRADE_PATH;
 extern const char* const UPGRADE_FILE;
-#if 0
-extern const char* const DATA_LINK;
-#endif
-
 
 void pr_exit(int status)
 {
@@ -76,7 +72,7 @@ static bool is_dir(const char *path)
     return false;
 }
 
-void cls_ver(const char *filepath)
+void cls_file(const char *filepath)
 {
     fclose(fopen(filepath, "w"));
 }
@@ -149,7 +145,7 @@ void check_ver(char *pathname)
         goto end;
     }
 
-    cls_ver(UPGRADE_FILE);
+    cls_file(UPGRADE_FILE);
 
 end:
     close(fd);
@@ -344,4 +340,99 @@ void getwchan(char *wchan, pid_t pid) /* waitting channel */
     free(filepath);
     free(str);
     fclose(fp);
+}
+
+void exec_cmd(const char *shell_cmd)
+{
+    LOG_I("[THREAD-ID:%zu]exec: \"%s\"", pthread_self(), shell_cmd);
+    system(shell_cmd);
+}
+
+int find_fd(pid_t pid, const char *lockfile)
+{
+    const char *path_fmt = "/proc/%d/fd";
+    char pathname[64];
+    sprintf(pathname, path_fmt, pid);
+    struct dirent *file;
+    DIR *dir;
+#if EXT_LOG
+    LOG_I("[%s]open directory \"%s\"", __FUNCTION__, pathname);
+#endif
+    dir = opendir(pathname);
+    char filename[256];
+    struct stat st;
+    char realname[BUF_SIZE];
+    int fd = -1;
+    if (!dir)
+    {
+        LOG_I("cannot open \"%s\": %s", pathname, strerror(errno));
+        return fd;
+    }
+
+    while((file = readdir(dir)))
+    {
+        if (strchr(file->d_name, '.'))
+            continue;
+
+        sprintf(filename, "%s/%s", pathname, file->d_name);
+        lstat(filename, &st);
+        if ((st.st_mode & S_IFMT) != S_IFLNK)
+            continue;
+
+        memset(realname, 0, BUF_SIZE);
+        if (readlink(filename, realname, BUF_SIZE) == -1) /* no terminated null appended */
+            continue;
+
+#if EXT_LOG
+        LOG_I("[%s]link file \"%s\"", __FUNCTION__, realname);
+#endif
+        if (strstr(realname, lockfile))
+        {
+            fd = atoi(file->d_name);
+            goto end;
+        }
+    }
+
+end:
+    closedir(dir);
+    return fd;
+}
+
+bool check_fd(const char *lockfile)
+{
+    int pid;
+    LOG_I("[%s]check \"%s\"", __FUNCTION__, lockfile);
+    if (access(lockfile, F_OK) != -1)
+    {
+        pid = -1;
+        get_pid(&pid, "com.xiaomeng.icelocker");
+        if (pid == -1)
+        {
+#if EXT_LOG
+            LOG_I("[%s]IceLocker is dead...", __FUNCTION__);
+#endif
+            goto end;
+        }
+
+        int fd = find_fd(pid, lockfile);
+        if (fd == -1)
+        {
+#if EXT_LOG
+            LOG_I("cannot find find file descriptor");
+            LOG_I("[%s]IceLocker is  D E A D", __FUNCTION__);
+#endif
+            goto end;
+        }
+        else
+        {
+#if EXT_LOG
+            LOG_I("find fd %d of lockfile.txt", fd);
+            LOG_I("[%s]IceLocker still  A L I V E", __FUNCTION__);
+#endif
+            return true;
+        }
+    }
+
+end:
+    return false;
 }

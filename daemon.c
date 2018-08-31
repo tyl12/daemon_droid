@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <wait.h>
 #include <string.h>
-#include <errno.h>
 #include "utils.h"
 #include "error.h"
 
@@ -41,11 +40,10 @@ const char* const UPGRADE_PATH = "/sdcard/iceLocker/upgrade/%s";
 const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
 const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/data_xm";
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
-const char* const  INSTALL_APK = "pm install -r -t --user 0 "
-                                 "%s";                                                           /* apk name with absolute path */
+const char* const    LOCK_FILE = "/data/data/com.xiaomeng.icelocker/files/lockfile.txt";
 
 const char* const  UNINSTALL_APK = "pm uninstall -k com.xiaomeng.icelocker";
-
+const char* const  INSTALL_APK   = "pm install -r -t --user 0 %s";      /* apk name with absolute path */
 const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autossh cmd path */
                                    "-M %s "                             /* monitor port */
                                    "-NR %s"                             /* forward port */
@@ -57,13 +55,6 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "%s"                                 /* user name of forward server */
                                    "@%s "                               /* ip of forward server */
                                    "-p %s";                             /* ssh port of forward server */
-
-
-static void exec_cmd(const char *shell_cmd)
-{
-    LOG_I("[THREAD-ID:%zu]exec: \"%s\"", pthread_self(), shell_cmd);
-    system(shell_cmd);
-}
 
 void* monitor_logcat(void *arg)
 {
@@ -78,6 +69,7 @@ void* monitor_logcat(void *arg)
         clock_gettime(CLOCK_REALTIME, &ts);
         struct tm tm1 = *localtime(&ts.tv_sec);
         sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour);
+
         sprintf(filename, ".XM_%s.log", cur_time);
         sprintf(logpath, LOGCAT_PATH, filename);
 
@@ -141,9 +133,9 @@ void* monitor_app(void *arg)
             continue;
         }
 
-        if (!info.is_alive)
+        bool has_fd = check_fd(LOCK_FILE);
+        if (!info.is_alive || !has_fd)
         {
-#if 1
             FILE* fp = fopen("/sdcard/disable_reboot", "r");
             bool is_reboot = fp ? false : true;
             is_reboot || fclose(fp);
@@ -158,14 +150,12 @@ void* monitor_app(void *arg)
                 system("reboot");
             }
             printf("[%s]restart_cnt = %d\n", __FUNCTION__, restart_cnt);
-#endif
 
             char **cmd_vec = calloc(1, BUF_SIZE);
-
             strcpy(shell_cmd, LAUNCH_APK);
+            LOG_I("### exec: \"%s\"\n", shell_cmd);
             list2vec(shell_cmd, cmd_vec);
 
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
             if ((pid = fork()) < 0)
             {
                 err_sys("fork error");
@@ -330,8 +320,7 @@ int main()
         get_time(time_s);
         LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
-        LOG_I("### exec: \"sh /system/etc/inter.sh\"");
-        system("sh /system/etc/inter.sh");
+        exec_cmd("sh /system/etc/inter.sh");
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 

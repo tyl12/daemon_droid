@@ -8,6 +8,10 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <android/log.h>
+#include <sys/file.h>
+#include <errno.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #define      LOG_TAG "XIAOMENG.DAEMON"
 #define   LOG_I(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -15,6 +19,7 @@
 
 
 #define BUF_SIZE 256
+#define EXT_LOG    1
 
 typedef struct
 {
@@ -35,4 +40,7 @@ size_t trim(char *out, const char *src);
 void kill_proc(const char *name);
 void lowerstr(char *str);
 void getwchan(char *wchan, pid_t pid); /* waitting channel */
+void exec_cmd(const char *shell_cmd);
+int find_fd(pid_t pid, const char *lockfile);
+bool check_fd(const char *lockfile);
 #endif //C4FUN_UTILS_H
