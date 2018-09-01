@@ -73,15 +73,17 @@ void* monitor_logcat(void *arg)
         sprintf(filename, ".XM_%s.log", cur_time);
         sprintf(logpath, LOGCAT_PATH, filename);
 
-        sprintf(shell_cmd, "logcat -d -t 200 -f %s", logpath); /* backup */
-        exec_cmd(shell_cmd);
-        strcpy(shell_cmd, "logcat -c"); /* clear */
-        exec_cmd(shell_cmd);
+        //sprintf(shell_cmd, "logcat -d -t 200 -f %s", logpath); /* backup */
+        //exec_cmd(shell_cmd);
+        //strcpy(shell_cmd, "logcat -c"); /* clear */
+        //exec_cmd(shell_cmd);
 
-        sprintf(shell_cmd, "timeout 2h logcat >> %s", logpath);
+        sprintf(shell_cmd, "/system/bin/timeout 2h logcat -v threadtime >> %s ; logcat -c;", logpath);
         LOG_I("[%s]exec: \"%s\"", __FUNCTION__, shell_cmd);
+        /*
         char **cmd_vec = calloc(1, BUF_SIZE);
         list2vec(shell_cmd, cmd_vec);
+        */
 
         if ((pid = fork()) < 0)
         {
@@ -89,7 +91,8 @@ void* monitor_logcat(void *arg)
         }
         else if (pid == 0) /* child process */
         {
-            execvp("/system/bin/timeout", cmd_vec);
+            exec_cmd(shell_cmd);
+            //execvp("/system/bin/logcat", cmd_vec);
             _Exit(127);
         }
         else
@@ -107,7 +110,7 @@ void* monitor_logcat(void *arg)
             exec_cmd(shell_cmd);
         }
 
-        free(cmd_vec);
+        //free(cmd_vec);
     }
 }
 
