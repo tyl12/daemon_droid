@@ -125,6 +125,7 @@ void check_apk(const char *path, char *apk)
 void check_ver(char *pathname)
 {
     int fd, nread;
+    LOG_I("[%s]check \"%s\"", __FUNCTION__, UPGRADE_FILE);
     if ((fd = open(UPGRADE_FILE, O_RDONLY)) == -1)
     {
         LOG_I("[%s]open upgrade file failed: %s", __FUNCTION__, strerror(errno));
@@ -134,13 +135,16 @@ void check_ver(char *pathname)
     char buf[256] = { '\0' };
     nread = read(fd, buf, 256);
     trim(buf, buf);
-    if (nread == 0 || !strstr(buf, "version"))
+    LOG_I("[%s]upgrade contents: \"%s\"", __FUNCTION__, buf);
+    if (*buf == '\0')
         goto end;
 
-    sprintf(pathname, UPGRADE_PATH, buf);
+    const char *slash = strrchr(buf, '/');
+
+    sprintf(pathname, UPGRADE_PATH, slash ? (slash + 1) : buf);
     if (!is_dir(pathname))
     {
-        puts(pathname);
+        LOG_I("[%s]\"%s\" is not a directory", __FUNCTION__, pathname);
         *pathname = '\0';
         goto end;
     }

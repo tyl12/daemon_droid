@@ -38,7 +38,7 @@ const char* const  SSHD_CONFIG = "/system/etc/ssh/sshd_config";
 const char* const    SSHD_PATH = "/system/bin/sshd";
 const char* const UPGRADE_PATH = "/sdcard/iceLocker/upgrade/%s";
 const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
-const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/data_xm";
+const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/";
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
 const char* const    LOCK_FILE = "/data/data/com.xiaomeng.icelocker/files/lockfile.txt";
 
