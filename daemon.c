@@ -320,7 +320,7 @@ int main()
         get_time(time_s);
         LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
-        exec_cmd("sh /system/etc/inter.sh");
+        exec_cmd("sh /data/bin/inter.sh");
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
