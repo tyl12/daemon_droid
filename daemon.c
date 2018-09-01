@@ -78,7 +78,7 @@ void* monitor_logcat(void *arg)
         strcpy(shell_cmd, "logcat -c"); /* clear */
         exec_cmd(shell_cmd);
 
-        sprintf(shell_cmd, "timeout 2h logcat -s >> %s", logpath);
+        sprintf(shell_cmd, "timeout 2h logcat >> %s", logpath);
         LOG_I("[%s]exec: \"%s\"", __FUNCTION__, shell_cmd);
         char **cmd_vec = calloc(1, BUF_SIZE);
         list2vec(shell_cmd, cmd_vec);
