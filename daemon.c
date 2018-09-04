@@ -41,6 +41,7 @@ const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
 const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/";
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
 const char* const    LOCK_FILE = "/data/data/com.xiaomeng.icelocker/files/lockfile.txt";
+const char* const  STOP_DAEMON = "/sdcard/disable_daemon";
 
 const char* const  UNINSTALL_APK = "pm uninstall -k com.xiaomeng.icelocker";
 const char* const  INSTALL_APK   = "pm install -r -t --user 0 %s";      /* apk name with absolute path */
@@ -56,6 +57,12 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "@%s "                               /* ip of forward server */
                                    "-p %s";                             /* ssh port of forward server */
 
+static bool isstop()
+{
+    LOG_I("[THREAD-ID:%zu]is \"%s\" available?", pthread_self(), STOP_DAEMON);
+    return access(STOP_DAEMON, F_OK) != -1;
+}
+
 void* monitor_logcat(void *arg)
 {
     int status, pid;
@@ -66,6 +73,7 @@ void* monitor_logcat(void *arg)
     char logpath[256];
     for (;;)
     {
+        if (isstop()) break;
         clock_gettime(CLOCK_REALTIME, &ts);
         struct tm tm1 = *localtime(&ts.tv_sec);
         sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour);
@@ -112,6 +120,7 @@ void* monitor_logcat(void *arg)
 
         //free(cmd_vec);
     }
+    return NULL;
 }
 
 void* monitor_app(void *arg)
@@ -124,6 +133,7 @@ void* monitor_app(void *arg)
     restart_cnt = -1;
     for (;;)
     {
+        if (isstop()) break;
         selftest_info = check_proc("com.xiaomeng.androidselftest");
         info = check_proc("com.xiaomeng.icelocker");
         if(selftest_info.is_alive)
@@ -186,6 +196,7 @@ void* monitor_app(void *arg)
         else
             sleep(60);
     }
+    return NULL;
 }
 
 void* monitor_ssh(void *arg)
@@ -209,7 +220,7 @@ void* monitor_ssh(void *arg)
         }
         else
         {
-            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
+            LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
         }
 
         info = check_proc("autossh");
@@ -224,7 +235,7 @@ void* monitor_ssh(void *arg)
         }
         else
         {
-            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
+            LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
 
             if (!isdebug && timer++ > 60)
             {
@@ -320,6 +331,7 @@ int main()
 #if 1
     for (;;)
     {
+        if (isstop()) break;
         get_time(time_s);
         LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
@@ -380,6 +392,7 @@ next:
     /* thrd_app & thrd_ssh never join */
     pthread_join(thrd_app, NULL);
     pthread_join(thrd_ssh, NULL);
+    pthread_join(thrd_logcat, NULL);
 
     return 0;
 }
