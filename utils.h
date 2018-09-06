@@ -40,7 +40,7 @@ size_t trim(char *out, const char *src);
 void kill_proc(const char *name);
 void lowerstr(char *str);
 void getwchan(char *wchan, pid_t pid); /* waitting channel */
-void exec_cmd(const char *shell_cmd);
+int exec_cmd(const char *shell_cmd);
 int find_fd(pid_t pid, const char *lockfile);
 bool check_fd(const char *lockfile);
 #endif //C4FUN_UTILS_H

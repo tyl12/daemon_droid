@@ -346,10 +346,10 @@ void getwchan(char *wchan, pid_t pid) /* waitting channel */
     fclose(fp);
 }
 
-void exec_cmd(const char *shell_cmd)
+int exec_cmd(const char *shell_cmd)
 {
     LOG_I("[THREAD-ID:%zu]exec: \"%s\"", pthread_self(), shell_cmd);
-    system(shell_cmd);
+    return system(shell_cmd);
 }
 
 int find_fd(pid_t pid, const char *lockfile)

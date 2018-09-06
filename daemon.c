@@ -352,20 +352,15 @@ int main()
             goto next;
         }
 
-        /**
-         * new apk found:
-         * 1. uninstall old apk (with -k)
-         * 2. install new apk
-         * 3. copy /sdcard/iceLocker/upgrade/IceLocker_versionxxx/data_xm to DATA_PATH
-         * 4. launch com.xiaomeng.icelocker
-         */
-        system(UNINSTALL_APK); /* STEP 1 */
-
-        /* STEP 2 */
+        status = 0;
         sprintf(shell_cmd, INSTALL_APK, apk);
-        system(shell_cmd);
+        status += exec_cmd(shell_cmd);
+        if (status != 0)
+        {
+            LOG_I("### fail to install \"%s\"", apk);
+            goto next;
+        }
 
-        /* STEP 3 */
         char *cur_dir = calloc(1, BUF_SIZE);
         getcwd(cur_dir, BUF_SIZE);
         LOG_I("### current work directory: %s\n", cur_dir);
@@ -377,7 +372,7 @@ int main()
         chdir(cur_dir);
         free(cur_dir);
 
-        system(LAUNCH_APK);    /* STEP 4 */
+        exec_cmd(LAUNCH_APK);
 next:
         free(apk);
         LOG_I("###\n");
