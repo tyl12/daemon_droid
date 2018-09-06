@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <libgen.h>
 
 #define      LOG_TAG "XIAOMENG.DAEMON"
 #define   LOG_I(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)

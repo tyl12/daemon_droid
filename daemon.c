@@ -361,16 +361,8 @@ int main()
             goto next;
         }
 
-        char *cur_dir = calloc(1, BUF_SIZE);
-        getcwd(cur_dir, BUF_SIZE);
-        LOG_I("### current work directory: %s\n", cur_dir);
-        LOG_I("### change dir to: %s\n", pathname);
-        chdir(pathname);
-        sprintf(shell_cmd, "cp -rf data_xm %s", DATA_PATH);
-        LOG_I("### %s\n", shell_cmd);
-        system(shell_cmd);
-        chdir(cur_dir);
-        free(cur_dir);
+        sprintf(shell_cmd, "cp -r %s/* %s", pathname, DATA_PATH);
+        exec_cmd(shell_cmd);
 
         exec_cmd(LAUNCH_APK);
 next:
