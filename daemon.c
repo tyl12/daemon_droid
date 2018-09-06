@@ -301,12 +301,18 @@ int main()
         exit(1);
     }
 
-#if 1
+    get_time(time_s);
+    LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> once jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+    LOG_I("###\n");
+    exec_cmd("sh /data/bin/once.sh");
+    LOG_I("###\n");
+    LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+
     for (;;)
     {
         if (isstop()) break;
         get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>>>> other jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+        LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> loop jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
         exec_cmd("sh /data/bin/inter.sh");
         LOG_I("###\n");
@@ -347,7 +353,6 @@ next:
         else
             sleep(60);
     }
-#endif
 
     /* thrd_app & thrd_ssh never join */
     pthread_join(thrd_app, NULL);
