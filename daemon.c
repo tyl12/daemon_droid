@@ -76,49 +76,22 @@ void* monitor_logcat(void *arg)
         if (isstop()) break;
         clock_gettime(CLOCK_REALTIME, &ts);
         struct tm tm1 = *localtime(&ts.tv_sec);
-        sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour);
+        sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour & 0xFE);
 
         sprintf(filename, ".XM_%s.log", cur_time);
         sprintf(logpath, LOGCAT_PATH, filename);
 
-        //sprintf(shell_cmd, "logcat -d -t 200 -f %s", logpath); /* backup */
-        //exec_cmd(shell_cmd);
-        //strcpy(shell_cmd, "logcat -c"); /* clear */
-        //exec_cmd(shell_cmd);
+        sprintf(shell_cmd, "timeout 2h logcat -v threadtime >> %s; logcat -c", logpath);
+        exec_cmd(shell_cmd);
 
-        sprintf(shell_cmd, "/system/bin/timeout 2h logcat -v threadtime >> %s ; logcat -c;", logpath);
-        LOG_I("[%s]exec: \"%s\"", __FUNCTION__, shell_cmd);
-        /*
-        char **cmd_vec = calloc(1, BUF_SIZE);
-        list2vec(shell_cmd, cmd_vec);
-        */
+        FILE *fp = fopen(logpath, "a+");
+        fprintf(fp, "\n########################### dmesg ###########################\n\n");
+        fclose(fp);
+        sprintf(shell_cmd, "dmesg -c >> %s", logpath);
+        exec_cmd(shell_cmd);
 
-        if ((pid = fork()) < 0)
-        {
-            err_sys("fork error");
-        }
-        else if (pid == 0) /* child process */
-        {
-            exec_cmd(shell_cmd);
-            //execvp("/system/bin/logcat", cmd_vec);
-            _Exit(127);
-        }
-        else
-        {
-            waitpid(pid, &status, 0);
-            pr_exit(status); /* exit with 142 */
-
-            FILE *fp = fopen(logpath, "a+");
-            fprintf(fp, "\n########################### dmesg ###########################\n\n");
-            fclose(fp);
-            sprintf(shell_cmd, "dmesg -c >> %s", logpath);
-            exec_cmd(shell_cmd);
-
-            sprintf(shell_cmd, "mv %s " LOGCAT_PATH, logpath, filename + 1);
-            exec_cmd(shell_cmd);
-        }
-
-        //free(cmd_vec);
+        sprintf(shell_cmd, "mv %s " LOGCAT_PATH, logpath, filename + 1);
+        exec_cmd(shell_cmd);
     }
     return NULL;
 }
