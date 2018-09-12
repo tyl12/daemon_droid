@@ -41,7 +41,8 @@ const char* const UPGRADE_FILE = "/sdcard/iceLocker/upgradeVersion";
 const char* const    DATA_PATH = "/sdcard/iceLocker/IceLocker/";
 const char* const   LAUNCH_APK = "am start -n com.xiaomeng.icelocker/com.xiaomeng.iceLocker.ui.activity.MainActivity";
 const char* const    LOCK_FILE = "/data/data/com.xiaomeng.icelocker/files/lockfile.txt";
-const char* const  STOP_DAEMON = "/sdcard/disable_daemon";
+const char* const  STOP_DAEMON = "/sdcard/iceLocker/debug/disable_daemon";
+const char* const  STOP_REBOOT = "/sdcard/iceLocker/debug/disable_reboot";
 
 const char* const  UNINSTALL_APK = "pm uninstall -k com.xiaomeng.icelocker";
 const char* const  INSTALL_APK   = "pm install -r -t --user 0 %s";      /* apk name with absolute path */
@@ -122,7 +123,7 @@ void* monitor_app(void *arg)
         bool has_fd = check_fd(LOCK_FILE);
         if (!info.is_alive || !has_fd)
         {
-            FILE* fp = fopen("/sdcard/disable_reboot", "r");
+            FILE* fp = fopen(STOP_REBOOT, "r");
             bool is_reboot = fp ? false : true;
             is_reboot || fclose(fp);
 
