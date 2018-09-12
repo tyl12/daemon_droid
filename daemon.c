@@ -45,7 +45,7 @@ const char* const  STOP_DAEMON = "/sdcard/iceLocker/debug/disable_daemon";
 const char* const  STOP_REBOOT = "/sdcard/iceLocker/debug/disable_reboot";
 
 const char* const  UNINSTALL_APK = "pm uninstall -k com.xiaomeng.icelocker";
-const char* const  INSTALL_APK   = "pm install -r -t --user 0 %s";      /* apk name with absolute path */
+const char* const    INSTALL_APK = "pm install -r -t --user 0 %s";      /* apk name with absolute path */
 const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autossh cmd path */
                                    "-M %s "                             /* monitor port */
                                    "-NR %s"                             /* forward port */
@@ -210,31 +210,17 @@ void* monitor_ssh(void *arg)
         else
         {
             LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
-
+#if 0
             if (!isdebug && timer++ > 60)
             {
                 timer = 0;
-                goto restart;
-            }
-
-            if (restart_cnt == 0) /* exec regularly */
-            {
-                static int countdown = 0;
-                if (countdown++ < 6)
-                {
-                    LOG_I("### [%02d] keep ssh family alive", countdown);
-                    goto next;
-                }
-
-restart:
-                LOG_I("### [%d] restart ssh family to make sure proxy is available (critical)\n", ++restart_cnt);
+                LOG_I("[%s][%d-th] restart ssh family to make sure proxy is available", __FUNCTION__, ++restart_cnt);
                 kill_proc("autossh");
                 kill_proc("ssh");
                 kill_proc("sshd");
-
-                if (restart_cnt > 0x0fffffff)
-                    restart_cnt = 0;
+                restart_cnt > 0x0FFFFFFF && (restart_cnt = 0);
             }
+#endif
         }
 next:
         if (strlen(DEBUG) == 4)
@@ -253,10 +239,12 @@ int main()
     char time_s[64];
     FILE *f;
 
-    setenv("AUTOSSH_PATH", SSH_PATH, 1);
-    setenv("AUTOSSH_DEBUG", "1", 1);
-    setenv("AUTOSSH_LOGLEVEL", "7", 1);
-    setenv("AUTOSSH_LOGFILE", SSH_LOGFILE, 1);
+    setenv("AUTOSSH_PATH",       SSH_PATH,    1);
+    setenv("AUTOSSH_DEBUG",      "1",         1);
+    setenv("AUTOSSH_LOGLEVEL",   "7",         1);
+    setenv("AUTOSSH_LOGFILE",    SSH_LOGFILE, 1);
+    setenv("AUTOSSH_POLL",       "600",       1);
+    setenv("AUTOSSH_FIRST_POLL", "300",       1);
 
     /* get { key, value } from /sdcard/.environment */
     f = fopen(ENV_PATH, "r");
