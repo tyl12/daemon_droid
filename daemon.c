@@ -239,6 +239,7 @@ int main()
     char time_s[64];
     FILE *f;
 
+    sleep(60);
     setenv("AUTOSSH_PATH",       SSH_PATH,    1);
     setenv("AUTOSSH_DEBUG",      "1",         1);
     setenv("AUTOSSH_LOGLEVEL",   "7",         1);
