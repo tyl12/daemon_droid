@@ -44,4 +44,5 @@ void getwchan(char *wchan, pid_t pid); /* waitting channel */
 int exec_cmd(const char *shell_cmd);
 int find_fd(pid_t pid, const char *lockfile);
 bool check_fd(const char *lockfile);
+void cls_file(const char *filepath);
 #endif //C4FUN_UTILS_H

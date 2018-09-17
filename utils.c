@@ -149,8 +149,6 @@ void check_ver(char *pathname)
         goto end;
     }
 
-    cls_file(UPGRADE_FILE);
-
 end:
     close(fd);
 }

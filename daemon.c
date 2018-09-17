@@ -58,6 +58,10 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "@%s "                               /* ip of forward server */
                                    "-p %s";                             /* ssh port of forward server */
 
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t retry_cond = PTHREAD_COND_INITIALIZER;
+bool isretry = false;
+
 static bool isstop()
 {
     LOG_I("[THREAD-ID:%zu]is \"%s\" available?", pthread_self(), STOP_DAEMON);
@@ -99,6 +103,12 @@ void* monitor_logcat(void *arg)
 
 void* monitor_app(void *arg)
 {
+    if (isstop())
+        return NULL;
+    pthread_mutex_lock(&mtx);
+    if (isretry)
+        pthread_cond_wait(&retry_cond, &mtx);
+    pthread_mutex_unlock(&mtx);
     pid_t pid;
     int status, restart_cnt;
     proc_info info;
@@ -132,8 +142,11 @@ void* monitor_app(void *arg)
                 char cur_time[64];
                 get_time(cur_time);
                 fp = fopen("/sdcard/reboot_log", "a+");
-                fprintf(fp, "%s reboot system\n", cur_time);
-                fclose(fp);
+                if (fp)
+                {
+                    fprintf(fp, "%s reboot system\n", cur_time);
+                    fclose(fp);
+                }
                 system("reboot");
             }
             printf("[%s]restart_cnt = %d\n", __FUNCTION__, restart_cnt);
@@ -233,11 +246,12 @@ next:
 int main()
 {
     pid_t pid;
-    int status;
+    int status, try_cnt;
+    status = try_cnt = 0;
     proc_info info;
     char shell_cmd[1024];
-    char time_s[64];
-    FILE *f;
+    char time_s[64], apk[BUF_SIZE], pathname[BUF_SIZE];
+    FILE *fp;
 
     sleep(60);
     setenv("AUTOSSH_PATH",       SSH_PATH,    1);
@@ -248,13 +262,13 @@ int main()
     setenv("AUTOSSH_FIRST_POLL", "300",       1);
 
     /* get { key, value } from /sdcard/.environment */
-    f = fopen(ENV_PATH, "r");
-    if (!f)
+    fp = fopen(ENV_PATH, "r");
+    if (!fp)
         err_sys("cannot open .environment");
 
     char line[MAX_LINE];
     char *equal;
-    while (fgets(line, MAX_LINE, f))
+    while (fgets(line, MAX_LINE, fp))
     {
         if ((equal = strchr(line, '=')) == NULL)
             continue;
@@ -279,9 +293,13 @@ int main()
     LOG_I("%-26s = %s\n", "ENV_XIAOMENG_RSSH_SVRPORT", SERVER_PORT);
     LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
-    fclose(f);
+    fclose(fp);
 
     pthread_t thrd_app, thrd_ssh, thrd_logcat;
+    // memset(pathname, 0, BUF_SIZE);
+    *pathname = 0;
+    check_ver(pathname);
+    isretry = (*pathname != 0);
     status = (pthread_create(&thrd_app, NULL, monitor_app, NULL) != 0);
     status += (pthread_create(&thrd_ssh, NULL, monitor_ssh, NULL) != 0);
     status += (pthread_create(&thrd_logcat, NULL, monitor_logcat, NULL) != 0);
@@ -311,8 +329,11 @@ int main()
         get_time(time_s);
         LOG_I(">>>>>>>>>>>>>>>>>>>>> check update >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
         LOG_I("###\n");
-        char *apk = calloc(1, BUF_SIZE);
-        char pathname[256] = { '\0' };
+retry:
+        // memset(apk, 0, BUF_SIZE);
+        // memset(pathname, 0, BUF_SIZE);
+        *pathname = 0;
+        *apk = 0;
         check_ver(pathname);
         check_apk(pathname, apk);
         if (*pathname == 0 || *apk == 0)
@@ -322,20 +343,45 @@ int main()
         }
 
         status = 0;
+        LOG_I("### kill \"com.xiaomeng.icelocker\"");
+        kill_proc("com.xiaomeng.icelocker");
         sprintf(shell_cmd, INSTALL_APK, apk);
         status += exec_cmd(shell_cmd);
         if (status != 0)
         {
-            LOG_I("### fail to install \"%s\"", apk);
-            goto next;
+            LOG_I("### { \"status\" : %d, \"retry_cnt\" : %d } fail to install \"%s\"", status, try_cnt, apk);
+            if (++try_cnt > 10)
+            {
+                get_time(time_s);
+                fp = fopen("/sdcard/reboot_log", "a+");
+                if (fp)
+                {
+                    fprintf(fp, "%s upgrade failed, reboot system\n", time_s);
+                    fclose(fp);
+                }
+
+                /* test */
+                // chdir(pathname);
+                // system("cp IceLocker_xiaomeng_v2.0_2.apk.bak IceLocker_xiaomeng_v2.0_2.apk");
+                // system("mv test.apk test.apk.bak");
+                // sprintf(shell_cmd, "touch %s", STOP_DAEMON);
+                // exec_cmd(shell_cmd);
+                system("reboot");
+            }
+            sleep(5);
+            goto retry;
         }
 
         sprintf(shell_cmd, "cp -r %s/* %s", pathname, DATA_PATH);
         exec_cmd(shell_cmd);
 
+        cls_file(UPGRADE_FILE);
         exec_cmd(LAUNCH_APK);
+        pthread_mutex_lock(&mtx);
+        isretry = false;
+        pthread_cond_broadcast(&retry_cond);
+        pthread_mutex_unlock(&mtx);
 next:
-        free(apk);
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
         if (strlen(DEBUG) == 4)
