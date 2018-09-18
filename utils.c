@@ -385,11 +385,11 @@ int find_fd(pid_t pid, const char *lockfile)
         if (readlink(filename, realname, BUF_SIZE) == -1) /* no terminated null appended */
             continue;
 
-#if EXT_LOG
-        LOG_I("[%s]link file \"%s\"", __FUNCTION__, realname);
-#endif
         if (strstr(realname, lockfile))
         {
+#if EXT_LOG
+            LOG_I("[%s]link file \"%s\"", __FUNCTION__, realname);
+#endif
             fd = atoi(file->d_name);
             goto end;
         }

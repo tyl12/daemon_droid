@@ -25,11 +25,8 @@ static char RSSH_MONITOR[64] = { '\0' };
 static char    DEVICE_ID[64] = { '\0' };
 static char        DEBUG[64] = { '\0' };
 
-static int  restart_cnt = 0; /* autossh should be launched after network */
-
 extern const char* const UPGRADE_PATH;
 extern const char* const UPGRADE_FILE;
-extern const char* const LAUNCH_AUTOSSH;
 
 const char* const     ENV_PATH = "/sdcard/.environment";
 const char* const     SSH_PATH = "/system/bin/ssh";
@@ -58,24 +55,20 @@ const char* const LAUNCH_AUTOSSH = "%s -f "                             /* autos
                                    "@%s "                               /* ip of forward server */
                                    "-p %s";                             /* ssh port of forward server */
 
-pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t retry_cond = PTHREAD_COND_INITIALIZER;
-bool isretry = false;
 
 static bool isstop()
 {
-    LOG_I("[THREAD-ID:%zu]is \"%s\" available?", pthread_self(), STOP_DAEMON);
-    return access(STOP_DAEMON, F_OK) != -1;
+    bool isexist = access(STOP_DAEMON, F_OK) != -1;
+    LOG_I("[THREAD-ID:%zu]is \"%s\" available? %s", pthread_self(), STOP_DAEMON, isexist ? "true" : "false");
+    return isexist;
 }
 
 void* monitor_logcat(void *arg)
 {
     int status, pid;
     struct timespec ts;
-    char cur_time[64];
-    char shell_cmd[1024];
-    char filename[64];
-    char logpath[256];
+    char cur_time[64], shell_cmd[1024], filename[64], logpath[256];
+
     for (;;)
     {
         if (isstop()) break;
@@ -101,159 +94,44 @@ void* monitor_logcat(void *arg)
     return NULL;
 }
 
-void* monitor_app(void *arg)
-{
-    if (isstop())
-        return NULL;
-    pthread_mutex_lock(&mtx);
-    if (isretry)
-        pthread_cond_wait(&retry_cond, &mtx);
-    pthread_mutex_unlock(&mtx);
-    pid_t pid;
-    int status, restart_cnt;
-    proc_info info;
-    proc_info selftest_info;
-    char shell_cmd[1024];
-    restart_cnt = -1;
-    for (;;)
-    {
-        if (isstop()) break;
-        selftest_info = check_proc("com.xiaomeng.androidselftest");
-        info = check_proc("com.xiaomeng.icelocker");
-        if(selftest_info.is_alive)
-        {
-            if(info.is_alive)
-            {
-                kill_proc("com.xiaomeng.icelocker");
-            }
-            sleep(10);
-            continue;
-        }
-
-        bool has_fd = check_fd(LOCK_FILE);
-        if (!info.is_alive || !has_fd)
-        {
-            FILE* fp = fopen(STOP_REBOOT, "r");
-            bool is_reboot = fp ? false : true;
-            is_reboot || fclose(fp);
-
-            if (is_reboot && ++restart_cnt >= 10)
-            {
-                char cur_time[64];
-                get_time(cur_time);
-                fp = fopen("/sdcard/reboot_log", "a+");
-                if (fp)
-                {
-                    fprintf(fp, "%s reboot system\n", cur_time);
-                    fclose(fp);
-                }
-                system("reboot");
-            }
-            printf("[%s]restart_cnt = %d\n", __FUNCTION__, restart_cnt);
-
-            char **cmd_vec = calloc(1, BUF_SIZE);
-            strcpy(shell_cmd, LAUNCH_APK);
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
-            list2vec(shell_cmd, cmd_vec);
-
-            if ((pid = fork()) < 0)
-            {
-                err_sys("fork error");
-            }
-            else if (pid == 0) /* child process */
-            {
-                execvp("/system/bin/am", cmd_vec);
-                _Exit(127);
-            }
-            else
-            {
-                waitpid(pid, &status, 0);
-                pr_exit(status);
-            }
-
-            free(cmd_vec);
-        }
-        else
-        {
-            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
-        }
-
-        if (strlen(DEBUG) == 4)
-            sleep(10);
-        else
-            sleep(60);
-    }
-    return NULL;
-}
-
 void* monitor_ssh(void *arg)
 {
-    int timer, status, restart_cnt = 0;
-    proc_info info;
-    char shell_cmd[1024];
-    bool isdebug = strlen(DEBUG) == 4 ? true : false;
+    proc_info pinfo;
+    char run_sshd[1024], run_autossh[1024];
+    bool isdebug = strlen(DEBUG) == 4;
+
+    sprintf(run_sshd, "%s -f %s", SSHD_PATH, SSHD_CONFIG);
+    sprintf(run_autossh, LAUNCH_AUTOSSH, AUTOSSH_BIN_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
 
     for (;;)
     {
-        info = check_proc("sshd");
-        if (!info.is_alive)
-        {
-            sprintf(shell_cmd, "%s -f %s", SSHD_PATH, SSHD_CONFIG);
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
-            status = system(shell_cmd);
+        pinfo = check_proc("sshd");
+        if (!pinfo.is_alive) exec_cmd(run_sshd);
+        else                 LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, pinfo.name, pinfo.pid);
 
-            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
-            if (status == 127) { LOG_I("exec fails"); }
-        }
-        else
-        {
-            LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
-        }
+        pinfo = check_proc("autossh");
+        if (!pinfo.is_alive) exec_cmd(run_autossh);
+        else                 LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, pinfo.name, pinfo.pid);
 
-        info = check_proc("autossh");
-        if (!info.is_alive)
-        {
-            sprintf(shell_cmd, LAUNCH_AUTOSSH, AUTOSSH_BIN_PATH, RSSH_MONITOR, R_PORT, LOCAL_PORT, SERVER_USER, SERVER_IP, SERVER_PORT);
-            LOG_I("### exec: \"%s\"\n", shell_cmd);
-            status = system(shell_cmd);
-
-            if (status == -1)  { LOG_I("fork fails or waitpid returns an error other than EINTR: %s", strerror(errno)); }
-            if (status == 127) { LOG_I("exec fails"); }
-        }
-        else
-        {
-            LOG_I("[%s]\"%-20s\" is running with pid %d\n", __FUNCTION__, info.name, info.pid);
-#if 0
-            if (!isdebug && timer++ > 60)
-            {
-                timer = 0;
-                LOG_I("[%s][%d-th] restart ssh family to make sure proxy is available", __FUNCTION__, ++restart_cnt);
-                kill_proc("autossh");
-                kill_proc("ssh");
-                kill_proc("sshd");
-                restart_cnt > 0x0FFFFFFF && (restart_cnt = 0);
-            }
-#endif
-        }
-next:
-        if (strlen(DEBUG) == 4)
-            sleep(10);
-        else
-            sleep(60);
+        if (isdebug) sleep(10);
+        else         sleep(60);
     }
 }
 
 int main()
 {
     pid_t pid;
-    int status, try_cnt;
+    int status, try_cnt, restart_cnt;
     status = try_cnt = 0;
-    proc_info info;
-    char shell_cmd[1024];
-    char time_s[64], apk[BUF_SIZE], pathname[BUF_SIZE];
+    restart_cnt = -1;
+    proc_info pinfo;
+    char shell_cmd[1024], time_s[64], apk[BUF_SIZE], pathname[BUF_SIZE];
+    bool has_fd, isretry, isupd, isreboot, isdebug;
+    has_fd = isretry = isupd = isreboot = false;
     FILE *fp;
 
     sleep(60);
+
     setenv("AUTOSSH_PATH",       SSH_PATH,    1);
     setenv("AUTOSSH_DEBUG",      "1",         1);
     setenv("AUTOSSH_LOGLEVEL",   "7",         1);
@@ -294,13 +172,9 @@ int main()
     LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
     fclose(fp);
+    isdebug = strlen(DEBUG) == 4;
 
-    pthread_t thrd_app, thrd_ssh, thrd_logcat;
-    // memset(pathname, 0, BUF_SIZE);
-    *pathname = 0;
-    check_ver(pathname);
-    isretry = (*pathname != 0);
-    status = (pthread_create(&thrd_app, NULL, monitor_app, NULL) != 0);
+    pthread_t thrd_ssh, thrd_logcat;
     status += (pthread_create(&thrd_ssh, NULL, monitor_ssh, NULL) != 0);
     status += (pthread_create(&thrd_logcat, NULL, monitor_logcat, NULL) != 0);
     if (status != 0)
@@ -309,8 +183,7 @@ int main()
         exit(1);
     }
 
-    get_time(time_s);
-    LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> once jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+    LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> once jobs >>>>>>>>>>>>>>>>>>>>>>>>>\n");
     LOG_I("###\n");
     exec_cmd("sh /data/bin/once.sh");
     LOG_I("###\n");
@@ -319,37 +192,37 @@ int main()
     for (;;)
     {
         if (isstop()) break;
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> loop jobs >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
+        LOG_I(">>>>>>>>>>>>>>>>>>>>>>>> loop jobs >>>>>>>>>>>>>>>>>>>>>>>>>\n");
         LOG_I("###\n");
         exec_cmd("sh /data/bin/inter.sh");
         LOG_I("###\n");
         LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
-        get_time(time_s);
-        LOG_I(">>>>>>>>>>>>>>>>>>>>> check update >>>>>>>>>>>>>>>>>>>>>>>>> %s\n", time_s);
-        LOG_I("###\n");
+        /* is FactoryTest alive? */
+        pinfo = check_proc("com.xiaomeng.androidselftest");
+        if (pinfo.is_alive)
+        {
+            kill_proc("com.xiaomeng.icelocker");
+            goto next;
+        }
+
+        /* upgrade package available? */
 retry:
-        // memset(apk, 0, BUF_SIZE);
-        // memset(pathname, 0, BUF_SIZE);
         *pathname = 0;
         *apk = 0;
         check_ver(pathname);
         check_apk(pathname, apk);
         if (*pathname == 0 || *apk == 0)
         {
-            LOG_I("### there is no available update...\n");
-            goto next;
+            LOG_I("there is no available update...\n");
+            goto monitor_app;
         }
-
         status = 0;
-        LOG_I("### kill \"com.xiaomeng.icelocker\"");
-        kill_proc("com.xiaomeng.icelocker");
         sprintf(shell_cmd, INSTALL_APK, apk);
         status += exec_cmd(shell_cmd);
         if (status != 0)
         {
-            LOG_I("### { \"status\" : %d, \"retry_cnt\" : %d } fail to install \"%s\"", status, try_cnt, apk);
+            LOG_I("{ \"status\" : %d, \"retry_cnt\" : %d } fail to install \"%s\"", status, try_cnt, apk);
             if (++try_cnt > 10)
             {
                 get_time(time_s);
@@ -374,24 +247,49 @@ retry:
 
         sprintf(shell_cmd, "cp -r %s/* %s", pathname, DATA_PATH);
         exec_cmd(shell_cmd);
-
         cls_file(UPGRADE_FILE);
-        exec_cmd(LAUNCH_APK);
-        pthread_mutex_lock(&mtx);
-        isretry = false;
-        pthread_cond_broadcast(&retry_cond);
-        pthread_mutex_unlock(&mtx);
-next:
-        LOG_I("###\n");
-        LOG_I("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
-        if (strlen(DEBUG) == 4)
-            sleep(10);
+        isupd = true;
+
+monitor_app:
+        /* is IceLocker alive? */
+        pinfo = check_proc("com.xiaomeng.icelocker");
+        has_fd = check_fd(LOCK_FILE);
+        if (!pinfo.is_alive || !has_fd)
+        {
+            fp = fopen(STOP_REBOOT, "r");
+            isreboot = fp ? false : true;
+            isreboot || fclose(fp) || (restart_cnt = -1);
+
+            if (isupd || !isreboot)
+                goto launch_app;
+
+            if (++restart_cnt >= 10)
+            {
+                char cur_time[64];
+                get_time(cur_time);
+                fp = fopen("/sdcard/reboot_log", "a+");
+                if (fp)
+                {
+                    fprintf(fp, "%s IceLocker has crashed at least 10 times, reboot system\n", cur_time);
+                    fclose(fp);
+                }
+                system("reboot");
+            }
+            LOG_I("[%s]restart_cnt = %d\n", __FUNCTION__, restart_cnt);
+
+launch_app:
+            exec_cmd(LAUNCH_APK);
+            isupd = false;
+        }
         else
-            sleep(60);
+        {
+            LOG_I("[%s]\"%s\" is running with pid %d\n", __FUNCTION__, pinfo.name, pinfo.pid);
+        }
+next:
+        if (isdebug) sleep(10);
+        else         sleep(60);
     }
 
-    /* thrd_app & thrd_ssh never join */
-    pthread_join(thrd_app, NULL);
     pthread_join(thrd_ssh, NULL);
     pthread_join(thrd_logcat, NULL);
 
