@@ -69,9 +69,18 @@ void* monitor_logcat(void *arg)
     struct timespec ts;
     char cur_time[64], shell_cmd[1024], filename[64], logpath[256];
 
+
+    char shell_cmd[] = "sh /sdcard/iceLocker/scripts/save_logcat.sh"
     for (;;)
     {
-        if (isstop()) break;
+        status = exec_cmd(shell_cmd);
+        if (status != 0){
+            LOG_I("fail to execute cmd: %s", shell_cmd);
+            sleep(30);
+            continue;
+        }
+
+        /*
         clock_gettime(CLOCK_REALTIME, &ts);
         struct tm tm1 = *localtime(&ts.tv_sec);
         sprintf(cur_time, "%4d-%02d-%02d_%02dh", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour & 0xFE);
@@ -90,6 +99,7 @@ void* monitor_logcat(void *arg)
 
         sprintf(shell_cmd, "mv %s " LOGCAT_PATH, logpath, filename + 1);
         exec_cmd(shell_cmd);
+        */
     }
     return NULL;
 }
@@ -118,7 +128,7 @@ void* monitor_ssh(void *arg)
     }
 }
 
-int main()
+int main__()
 {
     pid_t pid;
     int status, try_cnt, restart_cnt;
