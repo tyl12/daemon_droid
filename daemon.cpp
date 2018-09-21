@@ -86,6 +86,8 @@ int exec_popen(const char* cmd) {
 }
 
 int main(){
+    //wait for /sdcard, /data mounted
+    sleep(120);
 #if 0
     string cmd = "logwrapper /system/bin/xiaomengDaemon_internal";
     LOG_I("start to execute: %s\n", cmd.c_str());
