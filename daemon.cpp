@@ -60,10 +60,10 @@ int exec_cmd(const char *shell_cmd)
     LOG_I("exit status = [%d]\n", WEXITSTATUS(status));
     if (WIFEXITED(status)) {
         if (0 == WEXITSTATUS(status)) {
-            LOG_I("run shell script successfully.\n");
+            LOG_I("run system call <%s> successfully.\n", shell_cmd);
         }
         else {
-            LOG_I("run shell script fail, script exit code: %d\n", WEXITSTATUS(status));
+            LOG_I("run system call <%s> fail, script exit code: %d\n", shell_cmd, WEXITSTATUS(status));
         }
     }
     return WEXITSTATUS(status);
@@ -85,9 +85,41 @@ int exec_popen(const char* cmd) {
     return 0;
 }
 
+int wait_system_boot_complete(){
+    printf("%s: start to check mount list\n",__FUNCTION__);
+    const vector<string> mountlist={
+        "/data",
+        "/mnt/runtime/default/emulated",
+        "/storage/emulated",
+        "/mnt/runtime/read/emulated",
+        "/mnt/runtime/write/emulated"
+    };
+    for (const auto& mnt:mountlist){
+        printf("%s: check for mount point: %s", __FUNCTION__, mnt.c_str());
+        while(true){
+            string cmd="mountpoint -q " + mnt;
+            printf("%s: execute cmd: %s\n", __FUNCTION__, cmd.c_str());
+            if (exec_cmd(cmd.c_str()) == 0){
+                printf("%s: %s is mounted", __FUNCTION__, mnt.c_str());
+                break; //continue to next mnt point
+            }
+            else{
+                printf("%s: %s is NOT mounted, wait", __FUNCTION__, mnt.c_str());
+                sleep(10);
+                continue;
+            }
+        }
+    }
+    sleep(10);
+    return 0;
+}
+
 int main(){
     //wait for /sdcard, /data mounted
-    sleep(120);
+    sleep(60);
+
+    wait_system_boot_complete();
+
 #if 0
     string cmd = "logwrapper /system/bin/xiaomengDaemon_internal";
     LOG_I("start to execute: %s\n", cmd.c_str());

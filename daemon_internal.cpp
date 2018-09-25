@@ -25,10 +25,10 @@
 
 using namespace std;
 
-#if defined(__ANDROID__)
+#if 1
 #define SHELL_BIN               "sh"
 #define SCRIPT_ENV              "/sdcard/.environment"
-#else
+#else //for debug only
 #define SHELL_BIN               "bash"
 #define SCRIPT_ENV              "./sdcard/.environment"
 #endif
@@ -103,10 +103,10 @@ int exec_cmd(const char *shell_cmd)
     printf("exit status = [%d]\n", WEXITSTATUS(status));
     if (WIFEXITED(status)) {
         if (0 == WEXITSTATUS(status)) {
-            printf("run shell script successfully.\n");
+            LOG_I("run system call <%s> successfully.\n", shell_cmd);
         }
         else {
-            printf("run shell script fail, script exit code: %d\n", WEXITSTATUS(status));
+            LOG_I("run system call <%s> fail, script exit code: %d\n", shell_cmd, WEXITSTATUS(status));
         }
     }
     return WEXITSTATUS(status);
@@ -183,6 +183,7 @@ int main(){
         }
     });
     if (t_init.joinable()){ t_init.join(); }
+    LOG_I("execute all <init> scripts complete\n");
 
 
     thread t_once = thread([=](){
@@ -225,9 +226,12 @@ int main(){
     }
 
     if (t_once.joinable()){ t_once.join(); }
+    LOG_I("execute all <once> scripts complete\n");
+
     for (auto && t_period:period_threads){
         if (t_period.joinable()){ t_period.join(); }
     }
+    LOG_I("execute all <period> scripts complete\n");
 
     //to avoid no script available
     do{
