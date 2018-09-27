@@ -171,6 +171,7 @@ int main(){
             while(true){
                 string cmd = string(SHELL_BIN) + " " + SCRIPT_DIR + "/" + f;
                 LOG_I("start to execute: %s\n", f.c_str());
+                cmd += " 2>&1 | sed  's/^/["+f+"] /'";
                 ret = exec_cmd(cmd.c_str());
                 if (ret){
                     LOG_I("ERROR: execute %s failed. retry\n", f.c_str());
@@ -192,6 +193,7 @@ int main(){
             while(true){
                 string cmd = string(SHELL_BIN) + " " + SCRIPT_DIR + "/" + f;
                 LOG_I("start to execute: %s\n", f.c_str());
+                cmd += " 2>&1 | sed  's/^/["+f+"] /'";
                 ret = exec_cmd(cmd.c_str());
                 if (ret){
                     LOG_I("ERROR: execute %s failed. retry\n", f.c_str());
@@ -212,6 +214,7 @@ int main(){
                 while(true){
                     string cmd = string(SHELL_BIN) + " " + SCRIPT_DIR + "/" + f;
                     LOG_I("start to execute: %s\n", f.c_str());
+                    cmd += " 2>&1 | sed  's/^/["+f+"] /'";
                     ret = exec_cmd(cmd.c_str());
                     if (ret){
                         LOG_I("ERROR: execute %s failed. retry\n", f.c_str());
