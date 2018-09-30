@@ -93,20 +93,20 @@ vector<string> get_file_list(const char* filedir, const char* str_start=NULL, co
 
 int exec_cmd(const char *shell_cmd)
 {
-    LOG_I("[THREAD-ID:%zu]exec: \"%s\"\n", pthread_self(), shell_cmd);
+    LOG_I("%s: thread-id=%zu, cmd: \"%s\"\n", __FUNCTION__, pthread_self(), shell_cmd);
     pid_t status = system(shell_cmd);
     if (-1 == status) {
-        printf("system error!");
+        LOG_I("%s:ERROR: system error!\n", __FUNCTION__);
         return -1;
     }
-    printf("exit status value = [0x%x]\n", status);
-    printf("exit status = [%d]\n", WEXITSTATUS(status));
+    LOG_I("%s: exit status value = [0x%x]\n", __FUNCTION__, status);
+    LOG_I("%s: exit status = [%d]\n", __FUNCTION__, WEXITSTATUS(status));
     if (WIFEXITED(status)) {
         if (0 == WEXITSTATUS(status)) {
-            LOG_I("run system call <%s> successfully.\n", shell_cmd);
+            LOG_I("%s: run system call <%s> successfully.\n", __FUNCTION__, shell_cmd);
         }
         else {
-            LOG_I("run system call <%s> fail, script exit code: %d\n", shell_cmd, WEXITSTATUS(status));
+            LOG_I("%s: ERROR: run system call <%s> fail, script exit code: [%d]\n", __FUNCTION__, shell_cmd, WEXITSTATUS(status));
         }
     }
     return WEXITSTATUS(status);
@@ -150,7 +150,42 @@ int load_env(){
     return 0;
 }
 
+int wait_system_boot_complete(){
+    LOG_I("%s: start to check mount list\n",__FUNCTION__);
+    const vector<string> mountlist={
+        "/data",
+        "/mnt/runtime/default/emulated",
+        "/storage/emulated",
+        "/mnt/runtime/read/emulated",
+        "/mnt/runtime/write/emulated"
+    };
+    for (const auto& mnt:mountlist){
+        LOG_I("%s: check for mount point: %s", __FUNCTION__, mnt.c_str());
+        while(true){
+            string cmd="mountpoint -q " + mnt;
+            LOG_I("%s: execute cmd: %s\n", __FUNCTION__, cmd.c_str());
+            if (exec_cmd(cmd.c_str()) == 0){
+                LOG_I("%s: %s is mounted", __FUNCTION__, mnt.c_str());
+                break; //continue to next mnt point
+            }
+            else{
+                LOG_I("%s: %s is NOT mounted, wait", __FUNCTION__, mnt.c_str());
+                sleep(10);
+                continue;
+            }
+        }
+    }
+    sleep(10);
+    return 0;
+}
+
+
 int main(){
+
+    sleep(60);
+
+    //wait for /sdcard, /data mounted
+    wait_system_boot_complete();
 
     load_env();
 
@@ -159,7 +194,7 @@ int main(){
         SCRIPT_DIR="/data/bin";
         setenv("ENV_XIAOMENG_SCRIPT_DIR", SCRIPT_DIR, 1);
     }
-    printf("ENV_XIAOMENG_SCRIPT_DIR is: %s\n", SCRIPT_DIR);
+    LOG_I("ENV_XIAOMENG_SCRIPT_DIR is: %s\n", SCRIPT_DIR);
 
     vector<string> init_list = get_file_list(SCRIPT_DIR, "init", ".sh");
     vector<string> once_list = get_file_list(SCRIPT_DIR, "once", ".sh");
@@ -238,7 +273,7 @@ int main(){
 
     //to avoid no script available
     do{
-        LOG_I("WARNING: xiaomeng daemon run in IDLE state...\n");
+        LOG_I("ERROR: xiaomeng daemon run in IDLE state...\n");
         sleep(60);
     } while(1);
 

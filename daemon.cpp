@@ -85,40 +85,9 @@ int exec_popen(const char* cmd) {
     return 0;
 }
 
-int wait_system_boot_complete(){
-    printf("%s: start to check mount list\n",__FUNCTION__);
-    const vector<string> mountlist={
-        "/data",
-        "/mnt/runtime/default/emulated",
-        "/storage/emulated",
-        "/mnt/runtime/read/emulated",
-        "/mnt/runtime/write/emulated"
-    };
-    for (const auto& mnt:mountlist){
-        printf("%s: check for mount point: %s", __FUNCTION__, mnt.c_str());
-        while(true){
-            string cmd="mountpoint -q " + mnt;
-            printf("%s: execute cmd: %s\n", __FUNCTION__, cmd.c_str());
-            if (exec_cmd(cmd.c_str()) == 0){
-                printf("%s: %s is mounted", __FUNCTION__, mnt.c_str());
-                break; //continue to next mnt point
-            }
-            else{
-                printf("%s: %s is NOT mounted, wait", __FUNCTION__, mnt.c_str());
-                sleep(10);
-                continue;
-            }
-        }
-    }
-    sleep(10);
-    return 0;
-}
-
 int main(){
-    //wait for /sdcard, /data mounted
-    sleep(60);
-
-    wait_system_boot_complete();
+    LOG_I("START\n");
+    sleep(10);
 
 #if 0
     string cmd = "logwrapper /system/bin/xiaomengDaemon_internal";
@@ -130,8 +99,9 @@ int main(){
     int ret = exec_popen(cmd.c_str());
 #endif
     if (ret){
-        LOG_I("ERROR: execute %s failed. retry\n", cmd.c_str());
+        LOG_I("ERROR! execute %s failed. exit daemon after 60sec\n", cmd.c_str());
     }
+    sleep(60);
     LOG_I("ERROR! xiaomeng daemon exit!\n");
     return 0;
 }
