@@ -182,7 +182,7 @@ int wait_system_boot_complete(){
 
 int main(){
 
-    sleep(60);
+    sleep(10);
 
     //wait for /sdcard, /data mounted
     wait_system_boot_complete();
