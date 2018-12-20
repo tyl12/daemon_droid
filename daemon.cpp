@@ -26,7 +26,7 @@
 using namespace std;
 
 #if defined(__ANDROID__)
-#define   LOG_TAG "xiaomengDaemon"
+#define   LOG_TAG "deepDaemon"
 #if 0
 #define   LOG_I(...) do{ __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__); printf(__VA_ARGS__); } while(0)
 #define   LOG_E(...) do{ __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__); printf(__VA_ARGS__); } while(0)
@@ -36,8 +36,8 @@ using namespace std;
 #endif
 
 #else
-#define   LOG_I(fmt, ...) printf("xiaomengDaemon:" fmt "\n", ##__VA_ARGS__)
-#define   LOG_E(fmt, ...) printf("xiaomengDaemon:" fmt "\n", ##__VA_ARGS__)
+#define   LOG_I(fmt, ...) printf("deepDaemon:" fmt "\n", ##__VA_ARGS__)
+#define   LOG_E(fmt, ...) printf("deepDaemon:" fmt "\n", ##__VA_ARGS__)
 #endif
 
 int startsWith(string s, string sub){
@@ -90,11 +90,11 @@ int main(){
     sleep(10);
 
 #if 0
-    string cmd = "logwrapper /system/bin/xiaomengDaemon_internal";
+    string cmd = "logwrapper /system/bin/deepDaemon_internal";
     LOG_I("start to execute: %s\n", cmd.c_str());
     int ret = exec_cmd(cmd.c_str());
 #else
-    string cmd = "/system/bin/xiaomengDaemon_internal 2>&1";
+    string cmd = "/system/bin/deepDaemon_internal 2>&1";
     LOG_I("start to execute: %s\n", cmd.c_str());
     int ret = exec_popen(cmd.c_str());
 #endif
@@ -102,7 +102,7 @@ int main(){
         LOG_I("ERROR! execute %s failed. exit daemon after 60sec\n", cmd.c_str());
     }
     sleep(60);
-    LOG_I("ERROR! xiaomeng daemon exit!\n");
+    LOG_I("ERROR! deep daemon exit!\n");
     return 0;
 }
 

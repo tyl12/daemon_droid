@@ -27,14 +27,14 @@ using namespace std;
 
 #if 1
 #define SHELL_BIN               "sh"
-#define SCRIPT_ENV              "/sdcard/.environment"
+#define SCRIPT_ENV              "/data/local/tmp/.environment"
 #else //for debug only
 #define SHELL_BIN               "bash"
 #define SCRIPT_ENV              "./sdcard/.environment"
 #endif
 
 #if 0//defined(__ANDROID__) //build as internal, with logwrapper
-#define   LOG_TAG "xiaomengDaemon"
+#define   LOG_TAG "deepDaemon"
 #define   LOG_I(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define   LOG_E(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #else
@@ -189,12 +189,12 @@ int main(){
 
     load_env();
 
-    const char* SCRIPT_DIR=getenv("ENV_XIAOMENG_SCRIPT_DIR");
+    const char* SCRIPT_DIR=getenv("ENV_DEEPLEARN_SCRIPT_DIR");
     if (SCRIPT_DIR==NULL){
-        SCRIPT_DIR="/data/bin";
-        setenv("ENV_XIAOMENG_SCRIPT_DIR", SCRIPT_DIR, 1);
+        SCRIPT_DIR="/data/local/tmp";
+        setenv("ENV_DEEPLEARN_SCRIPT_DIR", SCRIPT_DIR, 1);
     }
-    LOG_I("ENV_XIAOMENG_SCRIPT_DIR is: %s\n", SCRIPT_DIR);
+    LOG_I("ENV_DEEPLEARN_SCRIPT_DIR is: %s\n", SCRIPT_DIR);
 
     vector<string> init_list = get_file_list(SCRIPT_DIR, "init", ".sh");
     vector<string> once_list = get_file_list(SCRIPT_DIR, "once", ".sh");
@@ -273,11 +273,11 @@ int main(){
 
     //to avoid no script available
     do{
-        LOG_I("ERROR: xiaomeng daemon run in IDLE state...\n");
+        LOG_I("ERROR: deeplearn daemon run in IDLE state...\n");
         sleep(60);
     } while(1);
 
-    LOG_I("ERROR! xiaomeng daemon exit!\n");
+    LOG_I("ERROR! deeplearn daemon exit!\n");
 
     return 0;
 }
