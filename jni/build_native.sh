@@ -12,3 +12,6 @@ export PATH=$ANDROID_NDK:$ANDROID_NDK/toolchains/x86_64-4.9/prebuilt/linux-x86_6
 
 ndk-build
 
+
+adb push ../libs/arm64-v8a/deeplearnDaemon /system/bin/deeplearnDaemon
+adb push ../libs/arm64-v8a/deeplearnDaemon_internal /system/bin/deeplearnDaemon_internal
