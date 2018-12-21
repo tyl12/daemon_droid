@@ -86,9 +86,16 @@ while true; do
         echo "check status failed, check_cnt=$check_cnt"
         check_cnt=$(($check_cnt+1))
         if [ "$check_cnt" -gt "10" ]; then
-            echo "max check status. check_cnt=$check_cnt, reboot after 10 min..."
-            sleep 600
+            echo "max check status. check_cnt=$check_cnt, reboot after 5 min..."
+            echo "!!!!!!!!!!!!"
+            echo "!!!!!!!!!!!!"
+
+            sleep 300
             echo "max check status. check_cnt=$check_cnt, reboot now"
+            echo "!!!!!!!!!!!!"
+            echo "!!!!!!!!!!!!"
+            sync
+
             reboot
         fi
 

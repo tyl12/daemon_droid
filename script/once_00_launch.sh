@@ -33,14 +33,21 @@ while true; do
     ./$PROCESS_NAME
 
     if [ "$?" != "0" ]; then
-        echo "ERROR: found process die"
+        echo "ERROR: found process die. $cnt times"
         cnt=$(($cnt+1))
     fi
 
     if [ $cnt -gt "10" ]; then
-        echo "ERROR: max launch time, reboot system after 10min"
-        sleep 600
+        echo "ERROR: max launch time, reboot system after 5min"
+        echo "!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!"
+
+        sleep 300
         echo "ERROR: max launch time, reboot system now"
+        echo "!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!"
+        sync
+
         reboot
     fi
     sleep 10

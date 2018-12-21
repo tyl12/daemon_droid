@@ -154,10 +154,10 @@ int wait_system_boot_complete(){
     LOG_I("%s: start to check mount list\n",__FUNCTION__);
     const vector<string> mountlist={
         "/data",
-        "/mnt/runtime/default/emulated",
-        "/storage/emulated",
-        "/mnt/runtime/read/emulated",
-        "/mnt/runtime/write/emulated"
+        //"/mnt/runtime/default/emulated",
+        //"/storage/emulated",
+        //"/mnt/runtime/read/emulated",
+        //"/mnt/runtime/write/emulated"
     };
     for (const auto& mnt:mountlist){
         LOG_I("%s: check for mount point: %s", __FUNCTION__, mnt.c_str());
