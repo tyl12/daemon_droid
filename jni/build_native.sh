@@ -15,3 +15,4 @@ ndk-build
 
 adb push ../libs/arm64-v8a/client_droid /system/bin/client_droid
 adb push ../libs/arm64-v8a/client_droid_internal /system/bin/client_droid_internal
+adb push ../script/ /data/local/tmp/
