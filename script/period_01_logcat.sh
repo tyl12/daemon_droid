@@ -6,11 +6,13 @@ LOGCAT_PATH="/data/local/tmp/log"
 normal_name_prefix="logfile_`get_time`"
 log_file="${LOGCAT_PATH}/${normal_name_prefix}.log"
 
-size=`du -m $LOGCAT_PATH| grep -Eo "^[0-9]+"`
-echo "Found log size ${size} M"
-if [ "$size" -gt "200" ]; then
-    echo "clean log dir"
-    rm -rf $LOGCAT_PATH
+if [ -d $LOGCAT_PATH ]; then
+    size=`du -m $LOGCAT_PATH| grep -Eo "^[0-9]+"`
+    echo "Found log size ${size} M"
+    if [ "$size" -gt "200" ]; then
+        echo "clean log dir"
+        rm -rf $LOGCAT_PATH
+    fi
 fi
 mkdir -p $LOGCAT_PATH
 
