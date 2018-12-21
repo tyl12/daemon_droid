@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := deeplearnDaemon
+LOCAL_MODULE := client_droid
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -std=c++11 -O3 -lpthread
 LOCAL_C_INCLUDES += ..
@@ -12,7 +12,7 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := deeplearnDaemon_internal
+LOCAL_MODULE := client_droid_internal
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -std=c++11 -O3 -lpthread
 LOCAL_C_INCLUDES += ..

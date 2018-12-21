@@ -194,6 +194,9 @@ int main(){
         SCRIPT_DIR="/data/local/tmp";
         setenv("ENV_DEEPLEARN_SCRIPT_DIR", SCRIPT_DIR, 1);
     }
+    setenv("ANDROID_DATA", "/data", 1);
+    setenv("ANDROID_ROOT", "/system", 1);
+
     LOG_I("ENV_DEEPLEARN_SCRIPT_DIR is: %s\n", SCRIPT_DIR);
 
     vector<string> init_list = get_file_list(SCRIPT_DIR, "init", ".sh");

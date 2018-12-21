@@ -1,4 +1,8 @@
 #******NEVER TOUCH THIS! BEGIN********************************
+export ANDROID_DATA=/data
+export LD_LIBRARY_PATH=.
+export ANDROID_ROOT=/system
+
 get_cpu(){
     s=`cat /proc/cpuinfo | grep -i intel`
     if [ "$s" != "" ]; then
