@@ -17,11 +17,12 @@ function check_status()
 
     echo "start to check maintain reboot"
     if [ ! -f ${WATCHDOG_TIME} ]; then
-        echo "NO daemon relaunch file: $WATCHDOG_TIME, create first one"
-        echo "LAUNCH DAEMON@`get_time`@$nowdate_sec" > $WATCHDOG_TIME
+        echo "NO watchdog file: $WATCHDOG_TIME, create first one"
+        echo "watchdog@`get_time`@$nowdate_sec" > $WATCHDOG_TIME
         return 0
     fi
-    echo "Found existing daemon relaunch file: $WATCHDOG_TIME"
+    echo "Found existing watchdog file: $WATCHDOG_TIME, contents:"
+    cat $WATCHDOG_TIME
 
     lastdate_sec=`tail -n 1 $WATCHDOG_TIME| cut -d '@' -f 3`
     if [ "$lastdate_sec" == "" ]; then
@@ -33,7 +34,7 @@ function check_status()
     duration=$(($nowdate_sec-$lastdate_sec))
     if [ "$?" != "0" ]; then
         echo "invalid $WATCHDOG_TIME. $lastdate_sec"
-        rm -rf $WATCHDOG_TIME
+        ##TODO: rm -rf $WATCHDOG_TIME
         return 0
     fi
 
