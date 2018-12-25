@@ -4,6 +4,7 @@ TAG="$0 : "
 
 export PROCESS_PATH="/data/local/tmp"
 export PROCESS_NAME="client_droid"
+export LD_LIBRARY_PATH=/data/local/tmp:$LD_LIBRARY_PATH
 
 
 #----------------------------------------
