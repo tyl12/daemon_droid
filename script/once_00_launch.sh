@@ -23,6 +23,7 @@ mv $tmpfile $DAEMON_LAUNCH_TIMESTAMP
 cnt=0
 while true; do
     cd  $PROCESS_PATH
+    mkdir -p $PROCESS_PATH/out
     if [ ! -f ./$PROCESS_NAME ]; then
         echo "ERROR: $PROCESS_PATH/$PROCESS_NAME not found"
         sleep 10
