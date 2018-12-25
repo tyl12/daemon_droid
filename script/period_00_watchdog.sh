@@ -3,7 +3,7 @@ echo "=====>$0 begin @ `get_time`"
 TAG="$0 : "
 
 export PROCESS_PATH="/data/local/tmp"
-export PROCESS_NAME="client_droid"
+export PROCESS_NAME="deeplearn_client"
 LOCKFILE=$PROCESS_PATH/lockfile
 touch $LOCKFILE
 
@@ -78,7 +78,7 @@ while true; do
         echo "$PROCESS_NAME not launch, skip monitor this time"
         break;#next thread cycle
     fi
-    echo "client_droid alive, check status"
+    echo "deeplearn_client alive, check status"
 
     echo "$PROCESS_NAME exist, monitor status"
     check_status
