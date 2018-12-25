@@ -3,7 +3,7 @@ echo "=====>$0 begin @ `get_time`"
 TAG="$0 : "
 
 export PROCESS_PATH="/data/local/tmp"
-export PROCESS_NAME="deeplearn_client"
+export PROCESS_NAME="client_droid"
 
 
 #----------------------------------------

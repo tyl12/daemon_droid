@@ -34,7 +34,7 @@ using namespace std;
 #endif
 
 #if 0//defined(__ANDROID__) //build as internal, with logwrapper
-#define   LOG_TAG "deepDaemon"
+#define   LOG_TAG "client_droid"
 #define   LOG_I(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define   LOG_E(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #else
@@ -276,11 +276,11 @@ int main(){
 
     //to avoid no script available
     do{
-        LOG_I("ERROR: deeplearn daemon run in IDLE state...\n");
+        LOG_I("ERROR: client_droid daemon run in IDLE state...\n");
         sleep(60);
     } while(1);
 
-    LOG_I("ERROR! deeplearn daemon exit!\n");
+    LOG_I("ERROR! client_droid daemon exit!\n");
 
     return 0;
 }
