@@ -2,6 +2,8 @@
 echo "=====>$0 begin @ `get_time`"
 TAG="$0 : "
 
+
+export LD_LIBRARY_PATH=/data/local/tmp/:$LD_LIBRARY_PATH
 export PROCESS_PATH="/data/local/tmp"
 export PROCESS_NAME="deeplearn_client"
 export LD_LIBRARY_PATH=/data/local/tmp:$LD_LIBRARY_PATH
